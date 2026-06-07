@@ -1,0 +1,44 @@
+{
+  "name": "@waycraft/waypoint-mcp",
+  "version": "0.1.1",
+  "description": "A structured development protocol as an MCP server. 14 tools that guide any project from goal to ship.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "claude",
+    "claude-code",
+    "engineering",
+    "development-process",
+    "protocol",
+    "ai-native",
+    "workflow"
+  ],
+  "bin": {
+    "waypoint-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node build.js",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "tsx tests/goal.test.ts && tsx tests/research.test.ts && tsx tests/compare.test.ts && tsx tests/plan.test.ts && tsx tests/build.test.ts && tsx tests/test.test.ts && tsx tests/fix.test.ts && tsx tests/debug.test.ts && tsx tests/measure.test.ts && tsx tests/improve.test.ts && tsx tests/document.test.ts && tsx tests/review.test.ts",
+    "prepare": "node build.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.28.0",
+    "pptxgenjs": "^4.0.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-icons": "^5.6.0",
+    "sharp": "^0.34.5",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
