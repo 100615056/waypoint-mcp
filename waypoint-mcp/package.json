@@ -1,18 +1,24 @@
 {
   "name": "@waycraft/waypoint-mcp",
-  "version": "0.1.1",
-  "description": "A structured development protocol as an MCP server. 14 tools that guide any project from goal to ship.",
+  "version": "0.1.3",
+  "description": "The right questions at every step of building software. 14 guided tools from goal to ship — for engineers and non-technical teams.",
   "type": "module",
   "license": "PolyForm-Noncommercial-1.0.0",
   "keywords": [
     "mcp",
     "claude",
     "claude-code",
-    "engineering",
-    "development-process",
-    "protocol",
+    "developer-tools",
+    "software-development",
+    "guide",
+    "guided",
+    "project-management",
+    "workflow",
     "ai-native",
-    "workflow"
+    "best-practices",
+    "junior-developer",
+    "scaffold",
+    "engineering"
   ],
   "bin": {
     "waypoint-mcp": "dist/index.js"

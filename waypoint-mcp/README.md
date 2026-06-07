@@ -1,8 +1,10 @@
 # Waypoint
 
-A structured development protocol as an MCP server. 14 tools that guide any project from goal to ship — for engineers and non-technical stakeholders alike.
+Building with AI is fast. But fast without direction means rework, missed requirements, and products that don't land. Waypoint gives you the questions a senior engineer would ask — at every step, automatically.
 
-Each tool reads your workspace automatically. No setup or briefing required. Tools write structured artifacts to a `.waypoint/` folder, building a shared record of decisions, designs, plans, and reviews as you work.
+14 guided tools take you from first idea to shipped product. Each one reads your workspace, asks the right questions, and writes a plain-language record of what was decided and why. For engineers and non-technical teams alike.
+
+No setup or briefing required. Tools write structured artifacts to a `.waypoint/` folder, building a shared record of decisions, designs, plans, and reviews as you work.
 
 ---
 
