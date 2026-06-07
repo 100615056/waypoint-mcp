@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "description": "A structured development protocol as an MCP server. 14 tools that guide any project from goal to ship.",
   "type": "module",
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "keywords": [
     "mcp",
     "claude",
