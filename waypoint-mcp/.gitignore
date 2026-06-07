@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.waypoint/
+*.tgz
+.claude/settings.local.json
+*.pptx
+waypoint-pitch.cjs
