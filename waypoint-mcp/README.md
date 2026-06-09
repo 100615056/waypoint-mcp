@@ -43,33 +43,63 @@ Restart Claude Code after editing `mcp.json`.
 
 ## The 14 tools
 
-| Tool | What it does |
-|------|-------------|
-| `waypoint_goal` | Define what you're building and why |
-| `waypoint_research` | Surface what you need to know first |
-| `waypoint_compare` | Weigh your options and tradeoffs |
-| `waypoint_plan` | Map out how and when you'll build it |
-| `waypoint_design` | Set the structural contract before building |
-| `waypoint_build` | Scaffold the implementation |
-| `waypoint_test` | Verify it works |
-| `waypoint_fix` | Fix what's broken |
-| `waypoint_debug` | Find out why it's broken |
-| `waypoint_audit` | Check design health — tiered Must Fix / Should Fix findings |
-| `waypoint_measure` | Evaluate whether you hit the goal |
-| `waypoint_improve` | Identify what to make better |
-| `waypoint_document` | Write it up for others |
-| `waypoint_review` | Final check before you ship |
+Waypoint covers four phases. Each tool reads your workspace, asks the right questions, and writes a plain-language record of what was decided and why.
 
 Every tool accepts `workspacePath` (required) — the absolute path to the project you're working on.
 
 ---
 
-## The journey
+### Define
+
+**`waypoint_goal`** — Start here. Clarifies what you're building, who it's for, and what success looks like. Prevents scope drift before a line of code is written.
+
+**`waypoint_research`** — Surfaces what you need to know before committing to an approach: prior art, constraints, risks, and open questions.
+
+**`waypoint_compare`** — Lays out your options side by side with honest tradeoffs, so the choice you make is documented and defensible.
+
+---
+
+### Plan
+
+**`waypoint_plan`** — Turns your goal into a sequenced build plan: what gets built, in what order, and why.
+
+**`waypoint_design`** — Sets the structural contract before you write code — interfaces, data shapes, component boundaries. The thing you wish existed when you're debugging at 2am.
+
+---
+
+### Build
+
+**`waypoint_build`** — Scaffolds the implementation against the design. Works best when `waypoint_design` has already run.
+
+**`waypoint_test`** — Verifies the build does what it was supposed to. Surfaces gaps between spec and reality.
+
+**`waypoint_fix`** — Takes a known bug or failure and walks through the fix systematically.
+
+**`waypoint_debug`** — For when something is broken and you don't know why yet. Narrows root cause before touching code.
+
+**`waypoint_audit`** — Reviews design health across the codebase. Produces tiered findings: Must Fix, Should Fix, Consider.
+
+---
+
+### Ship
+
+**`waypoint_measure`** — Compares what you built against the original goal. Did you hit it? Where did you fall short?
+
+**`waypoint_improve`** — Identifies what to make better — performance, reliability, experience — based on what's actually in the project.
+
+**`waypoint_document`** — Writes documentation for the people who'll use or maintain this. Pulls from existing artifacts so it stays accurate.
+
+**`waypoint_review`** — Final check before shipping. Catches the things you stopped noticing because you've been too close to the code.
+
+---
+
+## The flow
 
 ```
-waypoint_goal → waypoint_research → waypoint_compare → waypoint_plan → waypoint_design
-             → waypoint_build → waypoint_test → waypoint_fix → waypoint_debug → waypoint_audit
-             → waypoint_measure → waypoint_improve → waypoint_document → waypoint_review
+Define:  waypoint_goal → waypoint_research → waypoint_compare
+Plan:    waypoint_plan → waypoint_design
+Build:   waypoint_build → waypoint_test → waypoint_fix → waypoint_debug → waypoint_audit
+Ship:    waypoint_measure → waypoint_improve → waypoint_document → waypoint_review
 ```
 
 Tools are independent — call any one at any time. The order above is the natural progression, not a requirement.
@@ -100,6 +130,14 @@ your-project/
 ```
 
 Artifacts are plain markdown — edit them directly. Later tools read earlier ones to stay in context. Commit `.waypoint/` to version control to preserve the record.
+
+---
+
+## Feedback & Discussion
+
+If something didn't click, felt missing, or you found a better way to use it — I'd love to hear it.
+
+→ [GitHub Discussions](https://github.com/explorenav-dev/waypoint-mcp/discussions)
 
 ---
 
