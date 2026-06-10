@@ -3,13 +3,13 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 export const definition = {
   name: "waypoint_plan",
   description:
-    "Create a structured plan for new features or significant changes only.",
+    "Create a structured implementation plan (what to build and in what order) — writes plan.md. Does not edit source files. Run after waypoint_goal.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       scope: {
         type: "string",
@@ -17,15 +17,15 @@ export const definition = {
           "Specific scope or milestone to plan (optional). Omit to plan the full goal.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   scope?: string;
 }): Promise<string> {
-  const { workspacePath, scope } = args;
+  const { workspacePath = process.cwd(), scope } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const goalArtifact = await getArtifact(workspacePath, "goal.md");
@@ -54,6 +54,8 @@ export async function run(args: {
     missing.length > 0
       ? `\n> ⚠️ Missing prior artifacts: ${missing.join(", ")}. Plan may be incomplete.`
       : "",
+    "",
+    "> **Instructions for Claude:** Fill in the milestones below based on the goal and any prior research or compare decisions. Each milestone needs a real deliverable, a done-when criterion, and concrete steps — not placeholders.",
     "",
     "## Milestones",
     "<!-- Break the work into 2–5 ordered milestones -->",
@@ -111,6 +113,8 @@ export async function run(args: {
     "",
     "### Artifact saved",
     "`plan.md` written to `.waypoint/plan.md`.",
+    "",
+    "> **Now:** Break the goal into 2-4 ordered milestones. For each: name the deliverable, write a concrete done-when criterion, and list the key steps. Add any real risks you can identify. Then summarise the milestones for the user.",
     "",
     "### Suggested next step",
     "Run `waypoint_build` to scaffold implementation from this plan.",

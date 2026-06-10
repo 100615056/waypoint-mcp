@@ -28,7 +28,7 @@ section("tools/list");
   assert(names.includes("waypoint_research"), "waypoint_research is listed");
 
   const tool = res.result.tools.find((t: any) => t.name === "waypoint_research");
-  assert(tool?.inputSchema?.required?.includes("workspacePath"), "workspacePath is required");
+  assert("workspacePath" in (tool?.inputSchema?.properties ?? {}), "workspacePath param exists");
   assert("topic" in (tool?.inputSchema?.properties ?? {}), "topic param exists");
 }
 

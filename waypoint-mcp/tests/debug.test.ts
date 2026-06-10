@@ -18,7 +18,7 @@ section("tools/list");
   const names: string[] = res.result.tools.map((t: any) => t.name);
   assert(names.includes("waypoint_debug"), "waypoint_debug is listed");
   const tool = res.result.tools.find((t: any) => t.name === "waypoint_debug");
-  assert(tool?.inputSchema?.required?.includes("workspacePath"), "workspacePath is required");
+  assert("workspacePath" in (tool?.inputSchema?.properties ?? {}), "workspacePath param exists");
   assert(tool?.inputSchema?.required?.includes("mode"), "mode is required");
   assert("symptom" in (tool?.inputSchema?.properties ?? {}), "symptom param exists");
   const modeEnum: string[] = tool?.inputSchema?.properties?.mode?.enum ?? [];

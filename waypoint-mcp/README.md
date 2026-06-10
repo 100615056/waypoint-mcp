@@ -51,7 +51,7 @@ Every tool accepts `workspacePath` (required) — the absolute path to the proje
 
 ### Define
 
-**`waypoint_goal`** — Start here. Clarifies what you're building, who it's for, and what success looks like. Prevents scope drift before a line of code is written.
+**`waypoint_goal`** — Start here. Clarifies what you're building, who it's for, and what success looks like. Prevents scope drift before a line of code is written. If a goal already exists for this project, it will ask you to confirm before archiving the current cycle and starting fresh — pass `confirmArchive: true` to proceed.
 
 **`waypoint_research`** — Surfaces what you need to know before committing to an approach: prior art, constraints, risks, and open questions.
 
@@ -61,9 +61,9 @@ Every tool accepts `workspacePath` (required) — the absolute path to the proje
 
 ### Plan
 
-**`waypoint_plan`** — Turns your goal into a sequenced build plan: what gets built, in what order, and why.
+**`waypoint_plan`** — Turns your goal into a sequenced build plan: what gets built, in what order, and why. Plan = what to build.
 
-**`waypoint_design`** — Sets the structural contract before you write code — interfaces, data shapes, component boundaries. The thing you wish existed when you're debugging at 2am.
+**`waypoint_design`** — Sets the structural contract for how the code should be written: folder structure, patterns to follow, patterns to avoid. Design = how to build it. Run after `waypoint_plan`.
 
 ---
 
@@ -75,9 +75,9 @@ Every tool accepts `workspacePath` (required) — the absolute path to the proje
 
 **`waypoint_fix`** — Takes a known bug or failure and walks through the fix systematically.
 
-**`waypoint_debug`** — For when something is broken and you don't know why yet. Narrows root cause before touching code.
+**`waypoint_debug`** — For when something is broken and you don't know why yet. Narrows root cause before touching code. Accepts an optional `mode`: `troubleshoot` (default — likely causes ranked by likelihood) or `trace` (follow the execution path step by step). Leave `mode` out if unsure — `troubleshoot` handles most problems.
 
-**`waypoint_audit`** — Reviews design health across the codebase. Produces tiered findings: Must Fix, Should Fix, Consider.
+**`waypoint_audit`** — Mid-cycle health check: reads the codebase and compares it against good practices for your project tier. Produces tiered findings: Must Fix, Should Fix, Consider. Run this anytime mid-cycle — after a milestone, before moving on.
 
 ---
 
@@ -89,7 +89,7 @@ Every tool accepts `workspacePath` (required) — the absolute path to the proje
 
 **`waypoint_document`** — Writes documentation for the people who'll use or maintain this. Pulls from existing artifacts so it stays accurate.
 
-**`waypoint_review`** — Final check before shipping. Catches the things you stopped noticing because you've been too close to the code.
+**`waypoint_review`** — Pre-ship final checklist. Reads all `.waypoint/*.md` artifacts and produces a go/no-go summary — surfaces anything flagged but not addressed, missing artifacts, and open questions. Run this last, when you think you're ready to ship.
 
 ---
 
@@ -126,10 +126,29 @@ your-project/
     ├── measure.md
     ├── improve.md
     ├── docs.md
-    └── review.md
+    ├── review.md
+    └── previous.md   ← written when a new goal replaces an existing one
 ```
 
 Artifacts are plain markdown — edit them directly. Later tools read earlier ones to stay in context. Commit `.waypoint/` to version control to preserve the record.
+
+When you start a new design cycle with `waypoint_goal`, it will ask for confirmation before archiving the existing cycle (`confirmArchive: true`). Once confirmed, the previous goal and artifact list are saved to `previous.md`. One file, always current — not an accumulating archive.
+
+---
+
+## Pairs with
+
+**[session-continuity](https://www.npmjs.com/package/session-continuity)** — Waypoint tracks where you are in the build process. session-continuity tracks where you left off in the conversation. Together, Claude has full context — no re-explaining ever.
+
+```bash
+claude mcp add session-continuity npx session-continuity
+```
+
+**[@waycraft/mcp-manager](https://www.npmjs.com/package/@waycraft/mcp-manager)** — if waypoint drops mid-cycle, mcp-manager restarts it without leaving the conversation.
+
+```bash
+claude mcp add mcp-manager npx @waycraft/mcp-manager
+```
 
 ---
 
@@ -141,10 +160,6 @@ If something didn't click, felt missing, or you found a better way to use it —
 
 ---
 
-## Running tests
+## License
 
-```sh
-npm test
-```
-
-Each tool has its own test file in `tests/`. Tests spin up the MCP server over stdio, send real JSON-RPC calls, and assert on output and artifacts written to disk.
+[PolyForm Noncommercial License 1.0](https://polyformproject.org/licenses/noncommercial/1.0.0/) — free for personal and non-commercial use.

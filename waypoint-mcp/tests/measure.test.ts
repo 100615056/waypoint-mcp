@@ -18,7 +18,7 @@ section("tools/list");
   const names: string[] = res.result.tools.map((t: any) => t.name);
   assert(names.includes("waypoint_measure"), "waypoint_measure is listed");
   const tool = res.result.tools.find((t: any) => t.name === "waypoint_measure");
-  assert(tool?.inputSchema?.required?.includes("workspacePath"), "workspacePath is required");
+  assert("workspacePath" in (tool?.inputSchema?.properties ?? {}), "workspacePath param exists");
   assert(!("extra" in (tool?.inputSchema?.properties ?? { extra: true })), "no extra params");
 }
 

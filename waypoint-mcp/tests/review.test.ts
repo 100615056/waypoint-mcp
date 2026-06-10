@@ -19,7 +19,7 @@ section("tools/list");
   assert(names.includes("waypoint_review"), "waypoint_review is listed");
   assert(names.length === 14, `all 14 tools registered (got ${names.length})`);
   const tool = res.result.tools.find((t: any) => t.name === "waypoint_review");
-  assert(tool?.inputSchema?.required?.includes("workspacePath"), "workspacePath is required");
+  assert("workspacePath" in (tool?.inputSchema?.properties ?? {}), "workspacePath param exists");
 }
 
 // ── Test 2: no goal → guidance ────────────────────────────────────────────────

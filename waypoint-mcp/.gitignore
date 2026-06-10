@@ -1,7 +1,20 @@
+# Dependencies and build artifacts
 node_modules/
-dist/
-.waypoint/
 *.tgz
-.claude/settings.local.json
+*.js.map
+
+# Internal files — not for version control
+CLAUDE.md
+.claude/
+
+# Runtime artifacts
+.waypoint/
 *.pptx
 waypoint-pitch.cjs
+.DS_Store
+
+# Env and secrets
+.env
+.env.*
+*.key
+*.pem

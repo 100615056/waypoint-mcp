@@ -3,13 +3,13 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 export const definition = {
   name: "waypoint_build",
   description:
-    "Scaffold and implement. Generate prompts and guidance for AI coding tools.",
+    "Generate implementation prompts and a build checklist — writes build.md. Does not edit source files directly; use the included prompts in your AI coding tool. Run after waypoint_plan.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       task: {
         type: "string",
@@ -17,15 +17,15 @@ export const definition = {
           "Specific build task or milestone to implement (optional). Omit to build from the full plan.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   task?: string;
 }): Promise<string> {
-  const { workspacePath, task } = args;
+  const { workspacePath = process.cwd(), task } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const planArtifact = await getArtifact(workspacePath, "plan.md");

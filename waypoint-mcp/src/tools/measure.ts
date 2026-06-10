@@ -2,23 +2,24 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 
 export const definition = {
   name: "waypoint_measure",
-  description: "Evaluate overall project success against defined goals.",
+  description:
+    "Evaluate project success against defined goal criteria — writes measure.md. Does not edit source files. Run after waypoint_test.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
 }): Promise<string> {
-  const { workspacePath } = args;
+  const { workspacePath = process.cwd() } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const goalArtifact = await getArtifact(workspacePath, "goal.md");

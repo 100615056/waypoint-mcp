@@ -3,16 +3,16 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 export const definition = {
   name: "waypoint_review",
   description:
-    "Final quality check before shipping or handoff. Reads all prior artifacts.",
+    "Pre-ship final checklist — writes review.md. Does not edit source files. Reads all prior artifacts and surfaces anything unresolved before you ship. Run last, after waypoint_test and waypoint_measure. For mid-cycle health checks, use waypoint_audit instead.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
@@ -33,9 +33,9 @@ const ALL_ARTIFACTS = [
 ] as const;
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
 }): Promise<string> {
-  const { workspacePath } = args;
+  const { workspacePath = process.cwd() } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const goalArtifact = await getArtifact(workspacePath, "goal.md");

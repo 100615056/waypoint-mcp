@@ -1,15 +1,15 @@
-import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
+import { getBaseContext, getArtifact, saveArtifact, getSourceContext } from "../context.js";
 
 export const definition = {
   name: "waypoint_design",
   description:
-    "Produce a design contract before building. Infers project tier (Prototype / Product / Platform) from the workspace and plan, confirms with one question, then prescribes patterns, structure, and anti-patterns for Build to follow.",
+    "Produce a tier-aware design contract (how the code should be structured) — writes design.md. Does not edit source files. Run after waypoint_plan. Infers project tier (Prototype / Product / Platform) and prescribes patterns for Build to follow.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       tier: {
         type: "string",
@@ -23,7 +23,7 @@ export const definition = {
           "Specific area to produce design guidance for (optional). E.g. 'auth layer', 'data access', 'API structure'. Omit to cover the full plan.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
@@ -165,6 +165,63 @@ const PATTERNS = {
   },
 };
 
+// ─── Concern detection ────────────────────────────────────────────────────────
+
+const CONCERN_KEYWORDS: Record<string, string[]> = {
+  auth:     ["auth", "login", "session", "oauth", "jwt", "token", "password", "credential", "sign in", "signup", "register"],
+  database: ["database", "db", "store", "persist", "query", "migration", "schema", "orm", "repository", "prisma", "drizzle", "sqlite", "postgres", "mongo", "mysql"],
+  api:      ["api", "endpoint", "route", "http", "rest", "graphql", "request", "response", "webhook"],
+  ui:       ["component", "ui", "interface", "render", "view", "page", "frontend", "react", "vue", "svelte", "tailwind"],
+  ai:       ["llm", "ai", "prompt", "model", "agent", "tool", "completion", "embedding", "anthropic", "openai"],
+  queue:    ["queue", "job", "worker", "background", "schedule", "cron", "event", "async task"],
+  cache:    ["cache", "redis", "memcache", "ttl", "invalidat"],
+};
+
+const CONCERN_NOTES: Record<string, string[]> = {
+  auth: [
+    "Extract auth logic to middleware — never inline in route handlers",
+    "Validate every protected route independently — never rely on frontend guards",
+    "Store session tokens securely — not in localStorage for sensitive flows",
+  ],
+  database: [
+    "Use a repository or data-access layer — route handlers must not query directly",
+    "Validate input shapes before writing to the DB",
+    "Never expose DB error messages to API consumers",
+  ],
+  api: [
+    "Validate all incoming request bodies at the boundary (Zod, joi, or equivalent)",
+    "Use consistent error shapes across all endpoints",
+    "Version your API contract before exposing it externally",
+  ],
+  ui: [
+    "Separate data-fetching from rendering — no fetch calls inside render functions",
+    "Keep component state local unless shared — don't lift prematurely",
+    "Loading and error states are required, not optional",
+  ],
+  ai: [
+    "Wrap every LLM call in retry + timeout logic — APIs are unreliable",
+    "Extract prompt strings to a dedicated module — never inline in business logic",
+    "Validate LLM output shape before using it downstream — never trust it blindly",
+  ],
+  queue: [
+    "Jobs must be idempotent — assume they can run more than once",
+    "Dead letter queue or retry with backoff is required — failure is not optional",
+    "Never put unbounded work on the main request path",
+  ],
+  cache: [
+    "Document TTL and invalidation strategy before implementing",
+    "Treat stale cache as a failure mode, not just slow reads",
+    "Never cache user-specific data at a shared key",
+  ],
+};
+
+function detectConcerns(planText: string, deps: string[], sourceContent: string): string[] {
+  const lower = [planText, deps.join(" "), sourceContent].join(" ").toLowerCase();
+  return Object.entries(CONCERN_KEYWORDS)
+    .filter(([, keywords]) => keywords.some(kw => lower.includes(kw)))
+    .map(([concern]) => concern);
+}
+
 // ─── Confirmation prompt ──────────────────────────────────────────────────────
 
 function confirmationPrompt(
@@ -187,13 +244,14 @@ function confirmationPrompt(
 // ─── Run ──────────────────────────────────────────────────────────────────────
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   tier?: "prototype" | "product" | "platform";
   focus?: string;
 }): Promise<string> {
-  const { workspacePath, tier: explicitTier, focus } = args;
+  const { workspacePath = process.cwd(), tier: explicitTier, focus } = args;
 
   const ctx = await getBaseContext(workspacePath);
+  const sourceCtx = await getSourceContext(workspacePath, ctx.fileTree);
   const planArtifact = await getArtifact(workspacePath, "plan.md");
   const goalArtifact = await getArtifact(workspacePath, "goal.md");
   const optionsArtifact = await getArtifact(workspacePath, "compare.md");
@@ -232,16 +290,79 @@ export async function run(args: {
     ? "\n> ⚠️ No compare.md found — design contract is based on goal/plan only. Run `waypoint_compare` for richer context."
     : "";
 
+  const pkg = (() => {
+    try { return JSON.parse(ctx.packageJson ?? "{}"); }
+    catch { return {}; }
+  })();
+  const deps: string[] = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
+  const allSourceContent = Object.values(sourceCtx.files).join("\n");
+  const concerns = detectConcerns(planArtifact ?? goalLine, deps, allSourceContent);
+
+  const concernSection = concerns.length > 0
+    ? [
+        "## Plan-specific design notes",
+        "<!-- Targeted guidance based on what this plan is actually building -->",
+        "",
+        ...concerns.flatMap(concern => [
+          `### ${concern.charAt(0).toUpperCase() + concern.slice(1)}`,
+          ...CONCERN_NOTES[concern].map(n => `- ${n}`),
+          "",
+        ]),
+      ]
+    : [];
+
+  const sourceBlock = Object.keys(sourceCtx.files).length > 0
+    ? [
+        "## Source files read",
+        `_${sourceCtx.fileCount} files · ${sourceCtx.totalLines} lines${sourceCtx.truncated ? " (capped)" : ""}_`,
+        "",
+        ...Object.entries(sourceCtx.files).flatMap(([path, content]) => [
+          `### \`${path}\``,
+          "```",
+          content,
+          "```",
+          "",
+        ]),
+      ]
+    : [];
+
+  const currentStateSection = Object.keys(sourceCtx.files).length > 0
+    ? [
+        "## Current state observed",
+        `> **Instructions for Claude:** Review the source files above. Fill in what patterns are actually present in this codebase right now — before applying any recommendations. Be specific: name the files and patterns you see.`,
+        "",
+        "**Entry points identified:** _[list entry files and what they do]_",
+        "**File structure pattern:** _[flat / feature-based / layered / other — describe what you see]_",
+        "**Dependency injection:** _[present / absent — where are dependencies constructed?]_",
+        "**Error handling approach:** _[try/catch / .catch() / none — describe what you see]_",
+        "**Config/env access:** _[centralised config module / scattered process.env / other]_",
+        concerns.includes("ai") ? "**LLM call pattern:** _[where are LLM calls made, how are they wrapped?]_" : "",
+        concerns.includes("auth") ? "**Auth approach:** _[middleware / inline / other — describe what you see]_" : "",
+        concerns.includes("database") ? "**Data access pattern:** _[service layer / direct in handlers / repository / other]_" : "",
+        "",
+        "**Patterns already applied that align with this tier:**",
+        "- _[list what's already correct — don't recommend changes to things that are already right]_",
+        "",
+        "**Gaps between current state and this tier's recommendations:**",
+        "- _[list specific deviations — reference actual files where possible]_",
+        "",
+      ].filter(Boolean)
+    : [];
+
   const artifact = [
     "# Design",
     "",
     `**Goal:** ${goalLine}`,
     focusNote,
     `**Tier:** ${patterns.label} — ${patterns.description}`,
+    concerns.length > 0 ? `**Concerns detected:** ${concerns.join(", ")}` : "",
     optionsNote,
     "",
     tierNote,
     "",
+    ...sourceBlock,
+    ...currentStateSection,
+    ...concernSection,
     "## Recommended structure",
     ...patterns.structure.map(s => `- ${s}`),
     "",
@@ -263,6 +384,7 @@ export async function run(args: {
     "- [ ] Follow the recommended structure above",
     "- [ ] Apply all patterns marked for this tier",
     "- [ ] Avoid all listed anti-patterns",
+    concerns.length > 0 ? `- [ ] Address plan-specific notes for: ${concerns.join(", ")}` : "",
     "- [ ] ",
     "",
     `_Generated by waypoint_design (${patterns.label}) — ${new Date().toISOString()}_`,
@@ -279,8 +401,12 @@ export async function run(args: {
     `**Tier:** ${patterns.label}`,
     focus ? `**Focus:** ${focus}` : "",
     !hasOptions ? "\n> No compare.md — run `waypoint_compare` for decision context." : "",
+    sourceCtx.fileCount > 0
+      ? `\n> Source context: read ${sourceCtx.fileCount} files (${sourceCtx.totalLines} lines) — ${Object.keys(sourceCtx.files).join(", ")}`
+      : "",
     "",
     "### Contract covers",
+    concerns.length > 0 ? `- **Plan-specific notes** — ${concerns.join(", ")}` : "",
     `- **Structure** — ${patterns.structure.length} recommendations`,
     `- **Patterns to apply** — ${patterns.apply.length} rules`,
     `- **Anti-patterns to avoid** — ${patterns.avoid.length} rules`,
