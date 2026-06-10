@@ -3,13 +3,13 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 export const definition = {
   name: "waypoint_research",
   description:
-    "Gather best practices, surface the right questions, explore the solution space.",
+    "Surface best practices and open questions for the current goal — writes research.md. Does not edit source files. Run after waypoint_goal.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       topic: {
         type: "string",
@@ -17,15 +17,15 @@ export const definition = {
           "Specific research focus (optional). Omit to research the full goal.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   topic?: string;
 }): Promise<string> {
-  const { workspacePath, topic } = args;
+  const { workspacePath = process.cwd(), topic } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const goalArtifact = await getArtifact(workspacePath, "goal.md");
@@ -46,6 +46,8 @@ export async function run(args: {
     "",
     `**Goal:** ${goalLine}`,
     topic ? `**Focus:** ${topic}` : "",
+    "",
+    "> **Instructions for Claude:** Synthesize findings for the goal above into each section below. Use your knowledge of the domain — don't leave sections blank. For each open decision, write a specific question that `waypoint_compare` can resolve.",
     "",
     "## Key questions to answer",
     "<!-- What must be understood before committing to a design? -->",
@@ -106,7 +108,8 @@ export async function run(args: {
     "",
     "### Artifact saved",
     "`research.md` written to `.waypoint/research.md`.",
-    "Fill in findings before moving forward.",
+    "",
+    "> **Now:** Synthesize findings for the goal above into each section of `research.md` — prior art, applicable patterns, risks, and open decisions. Use your knowledge of the domain. Then summarise the top 2-3 open decisions the user will need to resolve in `waypoint_compare`.",
     "",
     "### Suggested next step",
     "Run `waypoint_compare` to turn research findings into concrete decision tradeoffs.",

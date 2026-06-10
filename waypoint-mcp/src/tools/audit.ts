@@ -1,15 +1,15 @@
-import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
+import { getBaseContext, getArtifact, saveArtifact, getSourceContext } from "../context.js";
 
 export const definition = {
   name: "waypoint_audit",
   description:
-    "Diagnostic design health check on existing code. Infers project tier, confirms with one question, then produces tiered findings: Must Fix, Should Fix, Consider Later. Runs after Build or Fix, or standalone on any existing codebase.",
+    "Mid-cycle health check on your codebase — writes audit.md. Safe to run at any point; does not edit source files. Tiered findings: Must Fix / Should Fix / Consider Later. For the pre-ship final check, use waypoint_review instead.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       tier: {
         type: "string",
@@ -23,7 +23,7 @@ export const definition = {
           "Specific file, folder, or concern to audit (optional). E.g. 'auth/', 'routes/user.js', 'error handling'. Omit to audit the full codebase.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
@@ -63,109 +63,101 @@ function inferTier(
   return { tier: "prototype", confidence: score <= 1 ? "high" : "medium" };
 }
 
-// ─── Findings rubric ──────────────────────────────────────────────────────────
+// ─── Structural checks (no source needed) ────────────────────────────────────
 
-type Severity = "must" | "should" | "consider";
-
-interface Finding {
+interface StructuralCheck {
   id: string;
   label: string;
+  severity: { prototype: string; product: string; platform: string };
+  check: (ctx: { fileTree: string; packageJson: string | null }) => boolean;
   detail: string;
-  severity: { prototype: Severity; product: Severity; platform: Severity };
 }
 
-const FINDINGS: Finding[] = [
-  {
-    id: "secrets",
-    label: "Hardcoded secrets or credentials in code",
-    detail: "Any API key, password, or token literal in source code is a credential leak risk. Move to environment variables and add to .env.example.",
-    severity: { prototype: "must", product: "must", platform: "must" },
-  },
-  {
-    id: "no-error-handling",
-    label: "Unhandled promise rejections or missing try/catch on I/O",
-    detail: "Silent failures corrupt state and are hard to debug in production. Every async I/O path needs explicit error handling.",
-    severity: { prototype: "must", product: "must", platform: "must" },
-  },
-  {
-    id: "god-file",
-    label: "God file or module (single file doing too much)",
-    detail: "Files over ~200 lines that mix concerns (routing, logic, data access) become hard to test and change. Split by responsibility.",
-    severity: { prototype: "should", product: "must", platform: "must" },
-  },
-  {
-    id: "auth-inline",
-    label: "Auth logic inside route handlers",
-    detail: "Auth mixed into handlers can't be tested in isolation and is easy to omit on new routes. Extract to middleware.",
-    severity: { prototype: "should", product: "must", platform: "must" },
-  },
-  {
-    id: "no-input-validation",
-    label: "No input validation at system boundaries",
-    detail: "Unvalidated input leads to silent data corruption and security risks. Add schema validation (Zod, joi) before handler logic.",
-    severity: { prototype: "should", product: "must", platform: "must" },
-  },
-  {
-    id: "no-service-layer",
-    label: "Direct DB or external API calls in route handlers",
-    detail: "Bypassing a service layer makes testing require real infrastructure and makes the DB/API harder to swap. Add a services/ or repositories/ layer.",
-    severity: { prototype: "consider", product: "should", platform: "must" },
-  },
-  {
-    id: "scattered-env",
-    label: "Scattered process.env access throughout the codebase",
-    detail: "Direct process.env reads in multiple files make config hard to audit and validate. Centralise in a config module.",
-    severity: { prototype: "consider", product: "should", platform: "must" },
-  },
+const STRUCTURAL_CHECKS: StructuralCheck[] = [
   {
     id: "no-tests",
-    label: "No automated tests",
-    detail: "Without tests, changes regress silently. Add at minimum unit tests for core logic and one integration test per entry point.",
+    label: "No test files detected",
     severity: { prototype: "consider", product: "should", platform: "must" },
+    check: ({ fileTree }) => !/(test|spec)\.(ts|js|tsx|jsx|py|go|rb)/.test(fileTree) && !/__tests__|test\/|spec\//.test(fileTree),
+    detail: "No test files found in the file tree. Add at minimum unit tests for core logic and one integration test per entry point.",
   },
   {
-    id: "magic-values",
-    label: "Magic numbers or strings in logic",
-    detail: "Unexplained literals (timeouts, limits, status codes) are hard to understand and change safely. Use named constants.",
-    severity: { prototype: "should", product: "should", platform: "must" },
-  },
-  {
-    id: "no-logging",
-    label: "No structured logging",
-    detail: "console.log is fine early on, but structured logging (with levels and context) is needed before onboarding a team or going to production.",
-    severity: { prototype: "consider", product: "consider", platform: "must" },
-  },
-  {
-    id: "inconsistent-naming",
-    label: "Inconsistent naming conventions",
-    detail: "Mixed camelCase/snake_case, unclear abbreviations, or generic names (data, result, obj) slow down reading. Align on a convention and apply it.",
-    severity: { prototype: "consider", product: "should", platform: "should" },
-  },
-  {
-    id: "inline-prompts",
-    label: "Prompt strings hardcoded inline in business logic",
-    detail: "Inline prompt strings mix concerns and make prompt iteration require code changes. Extract to a dedicated prompts/ module.",
+    id: "no-ci",
+    label: "No CI configuration found",
     severity: { prototype: "consider", product: "should", platform: "must" },
+    check: ({ fileTree }) => !/(\.github\/workflows|\.circleci|\.gitlab-ci|jenkinsfile|\.travis)/i.test(fileTree),
+    detail: "No CI configuration detected. Automated test runs on every push prevent regressions from reaching the main branch.",
   },
   {
-    id: "no-llm-resilience",
-    label: "LLM calls without retry or error handling",
-    detail: "LLM APIs are unreliable — timeouts, rate limits, and transient errors are common. Wrap every call in retry logic with a fallback.",
+    id: "no-env-example",
+    label: "No .env.example or documented config requirements",
+    severity: { prototype: "consider", product: "should", platform: "must" },
+    check: ({ fileTree }) => !/(\.env\.example|\.env\.sample|\.env\.template)/i.test(fileTree),
+    detail: "No .env.example found. New contributors have no way to know which environment variables are required.",
+  },
+  {
+    id: "no-package-json",
+    label: "No package.json (Node project) or equivalent manifest",
     severity: { prototype: "should", product: "must", platform: "must" },
-  },
-  {
-    id: "fat-agent-tools",
-    label: "Agent tool functions with multiple responsibilities",
-    detail: "Tool functions that do too many things degrade model tool-use accuracy and are hard to test. Each tool should do exactly one thing.",
-    severity: { prototype: "consider", product: "should", platform: "must" },
-  },
-  {
-    id: "no-llm-observability",
-    label: "No token usage or cost tracking on LLM calls",
-    detail: "Without observability on LLM usage, costs are invisible and runaway spending is easy to miss. Log token counts at the call site or service layer.",
-    severity: { prototype: "consider", product: "consider", platform: "must" },
+    check: ({ packageJson }) => !packageJson,
+    detail: "No package.json found. Dependencies and scripts are not declared — reproducible installs are not possible.",
   },
 ];
+
+// ─── Source-based finding prompts ─────────────────────────────────────────────
+
+const FINDING_PROMPTS: Record<string, { label: string; pattern: string; severity: { prototype: string; product: string; platform: string } }> = {
+  secrets: {
+    label: "Hardcoded secrets or credentials",
+    pattern: "Look for: string literals that look like API keys, tokens, or passwords assigned directly to variables (not via process.env). Patterns: `apiKey = \"...\"`, `password = \"...\"`, `token = \"sk-...\"`, long base64-looking strings in assignments.",
+    severity: { prototype: "must", product: "must", platform: "must" },
+  },
+  no_error_handling: {
+    label: "Unhandled async errors or missing try/catch on I/O",
+    pattern: "Look for: async functions or .then() chains that have no .catch() and no surrounding try/catch. Promises returned from I/O (file reads, HTTP calls, DB queries) that are not awaited or caught.",
+    severity: { prototype: "must", product: "must", platform: "must" },
+  },
+  god_module: {
+    label: "God module — single file doing too much",
+    pattern: "Look for: files where routing/handler logic, business logic, and data access are all mixed together. Signs: long chains of unrelated functions, imports from both HTTP and DB layers in the same file.",
+    severity: { prototype: "should", product: "must", platform: "must" },
+  },
+  auth_inline: {
+    label: "Auth logic inside route handlers",
+    pattern: "Look for: JWT verification, session checks, or permission checks written directly inside route handler functions rather than in middleware. Signs: `req.headers.authorization` parsed inside a handler body.",
+    severity: { prototype: "should", product: "must", platform: "must" },
+  },
+  no_input_validation: {
+    label: "No input validation at system boundaries",
+    pattern: "Look for: route handlers or public functions that use `req.body.x`, `params.x`, or user-supplied values directly without passing them through a schema validator (Zod, joi, yup, etc.).",
+    severity: { prototype: "should", product: "must", platform: "must" },
+  },
+  scattered_env: {
+    label: "Scattered process.env access",
+    pattern: "Look for: `process.env.X` accessed in multiple unrelated files rather than via a single centralised config module. Signs: `process.env.` appearing in route files, service files, and utility files.",
+    severity: { prototype: "consider", product: "should", platform: "must" },
+  },
+  magic_values: {
+    label: "Magic numbers or strings in logic",
+    pattern: "Look for: unexplained numeric or string literals used in conditions, timeouts, limits, or status codes — not assigned to a named constant. Signs: `if (retries > 3)`, `setTimeout(..., 5000)`, `status === 'pending'` with no constant definition.",
+    severity: { prototype: "should", product: "should", platform: "must" },
+  },
+  inline_prompts: {
+    label: "Prompt strings hardcoded inline in business logic",
+    pattern: "Look for: long template literal strings containing 'system:', 'user:', 'You are', or 'assistant:' appearing inside function bodies or handler logic rather than in a dedicated prompts/ module.",
+    severity: { prototype: "consider", product: "should", platform: "must" },
+  },
+  no_llm_resilience: {
+    label: "LLM API calls without retry or error handling",
+    pattern: "Look for: calls to anthropic.messages.create(), openai.chat.completions.create(), or similar LLM client methods that are not wrapped in try/catch and have no retry logic.",
+    severity: { prototype: "should", product: "must", platform: "must" },
+  },
+  direct_db_in_handler: {
+    label: "Direct DB or API calls in route handlers",
+    pattern: "Look for: database client calls (prisma.x.findMany, db.query, collection.find, etc.) appearing directly inside route handler functions rather than in a service or repository layer.",
+    severity: { prototype: "consider", product: "should", platform: "must" },
+  },
+};
 
 // ─── Tier label map ───────────────────────────────────────────────────────────
 
@@ -174,8 +166,6 @@ const TIER_LABELS: Record<string, string> = {
   product: "Product",
   platform: "Platform",
 };
-
-// ─── Confirmation note ────────────────────────────────────────────────────────
 
 function confirmationNote(
   tier: "prototype" | "product" | "platform",
@@ -198,16 +188,17 @@ function confirmationNote(
 // ─── Run ──────────────────────────────────────────────────────────────────────
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   tier?: "prototype" | "product" | "platform";
   focus?: string;
 }): Promise<string> {
-  const { workspacePath, tier: explicitTier, focus } = args;
+  const { workspacePath = process.cwd(), tier: explicitTier, focus } = args;
 
   const ctx = await getBaseContext(workspacePath);
-  const buildArtifact = await getArtifact(workspacePath, "build.md");
+  const sourceCtx = await getSourceContext(workspacePath, ctx.fileTree);
   const goalArtifact = await getArtifact(workspacePath, "goal.md");
   const designArtifact = await getArtifact(workspacePath, "design.md");
+  const buildArtifact = await getArtifact(workspacePath, "build.md");
   const fixArtifact = await getArtifact(workspacePath, "fix.md");
 
   const goalLine = goalArtifact?.match(/^# Goal\n+(.+)/m)?.[1] ?? "(no goal defined)";
@@ -227,43 +218,105 @@ export async function run(args: {
   const tierLabel = TIER_LABELS[tierKey];
   const tierNote = confirmationNote(tierKey, confidence, !!explicitTier);
 
-  const contextNotes = [
-    !buildArtifact && !goalArtifact && "> ℹ️ No EDP context found — running as standalone audit on existing codebase.",
-    !buildArtifact && goalArtifact && "> ⚠️ No build.md found — audit has no build baseline.",
-    designArtifact && "> ✅ design.md found — checking compliance with design contract.",
-    fixArtifact && "> ℹ️ fix.md present — checking that recent fixes haven't introduced structural drift.",
-  ].filter(Boolean) as string[];
-
-  const must = FINDINGS.filter(f => f.severity[tierKey] === "must");
-  const should = FINDINGS.filter(f => f.severity[tierKey] === "should");
-  const consider = FINDINGS.filter(f => f.severity[tierKey] === "consider");
-
   const pkg = (() => {
     try { return JSON.parse(ctx.packageJson ?? "{}"); }
     catch { return {}; }
   })();
   const deps: string[] = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
   const isAiNative = deps.some(d =>
-    ["@anthropic-ai/sdk", "openai", "langchain", "@langchain"].includes(d)
+    ["@anthropic-ai/sdk", "openai", "langchain", "@langchain/core"].includes(d)
   );
 
-  const aiFindings = ["inline-prompts", "no-llm-resilience", "fat-agent-tools", "no-llm-observability"];
+  // ── Structural checks ──────────────────────────────────────────────────────
+  const structuralFindings = STRUCTURAL_CHECKS
+    .filter(c => c.check({ fileTree: ctx.fileTree, packageJson: ctx.packageJson }))
+    .filter(c => c.severity[tierKey] !== "consider" || tierKey === "platform");
 
-  function renderFindings(findings: Finding[]): string[] {
-    if (findings.length === 0) return ["_None at this tier._"];
-    return findings.flatMap((f, i) => {
-      const isAi = aiFindings.includes(f.id);
-      const tag = isAiNative && isAi ? " _(AI-native)_" : "";
-      const focusNote = focus ? ` _(check in: ${focus})_` : "";
-      return [
-        `### ${i + 1}. ${f.label}${tag}`,
-        `${f.detail}${focusNote}`,
-        "- [ ] Investigated",
-        "- [ ] Action taken or explicitly deferred",
+  // ── Source-based finding prompts — filter to relevant ones ─────────────────
+  const aiOnlyFindings = new Set(["inline_prompts", "no_llm_resilience"]);
+  const relevantFindingIds = Object.keys(FINDING_PROMPTS).filter(id => {
+    if (aiOnlyFindings.has(id) && !isAiNative) return false;
+    if (id === "auth_inline" && !deps.some(d => ["passport", "jsonwebtoken", "next-auth", "clerk", "bcrypt"].includes(d))) return false;
+    if (id === "direct_db_in_handler" && !deps.some(d => ["prisma", "typeorm", "sequelize", "drizzle", "mongoose", "pg", "mysql2", "sqlite3"].includes(d))) return false;
+    return true;
+  });
+
+  // ── Source file block ──────────────────────────────────────────────────────
+  const sourceBlock = Object.keys(sourceCtx.files).length > 0
+    ? [
+        "## Source files read",
+        `_${sourceCtx.fileCount} files · ${sourceCtx.totalLines} lines${sourceCtx.truncated ? " (capped — large codebase)" : ""}_`,
+        "",
+        ...Object.entries(sourceCtx.files).flatMap(([path, content]) => [
+          `### \`${path}\``,
+          "```",
+          content,
+          "```",
+          "",
+        ]),
+      ]
+    : [
+        "## Source files read",
+        "_No source files found — structural checks only._",
         "",
       ];
-    });
-  }
+
+  // ── Finding prompt section ─────────────────────────────────────────────────
+  const findingInstructions = [
+    "## Findings",
+    "",
+    `> **Instructions for Claude:** Review the source files above. For each finding below, determine whether it is actually present in this codebase. Include only findings you can support with a specific code snippet or file reference. If a finding does not apply, omit it entirely — do not include it as \"not found.\"`,
+    "",
+    `> **Tier: ${tierLabel}** — use the severity guidance to prioritise findings into Must Fix / Should Fix / Consider Later.`,
+    focus ? `> **Focus:** ${focus} — concentrate findings on this area.` : "",
+    "",
+    "### Finding checklist",
+    "",
+    ...relevantFindingIds.flatMap(id => {
+      const f = FINDING_PROMPTS[id];
+      const sev = f.severity[tierKey];
+      return [
+        `**${f.label}** _(${sev} at ${tierLabel})_`,
+        `> ${f.pattern}`,
+        "- Evidence: _[cite the specific file and line if present, or omit this finding]_",
+        "- Recommended fix: _[fill in if present]_",
+        "",
+      ];
+    }),
+  ].filter(Boolean);
+
+  // ── Structural findings section ────────────────────────────────────────────
+  const structuralSection = structuralFindings.length > 0
+    ? [
+        "## Structural findings",
+        "_These are confirmed from the file tree — no source reading required._",
+        "",
+        ...structuralFindings.map(f => [
+          `**${f.label}** _(${f.severity[tierKey]} at ${tierLabel})_`,
+          f.detail,
+          "- [ ] Addressed",
+          "",
+        ].join("\n")),
+      ]
+    : ["## Structural findings", "_None detected._", ""];
+
+  // ── Design contract compliance ─────────────────────────────────────────────
+  const complianceSection = [
+    "## Design contract compliance",
+    designArtifact
+      ? "<!-- Check findings against the contract in design.md -->"
+      : "<!-- No design.md found — run `waypoint_design` to establish a contract, then re-audit -->",
+    "- [ ] All Must Fix findings addressed",
+    "- [ ] Structure matches design.md recommendations",
+    "",
+  ];
+
+  const contextNotes = [
+    !buildArtifact && !goalArtifact && "> ℹ️ No EDP context found — running as standalone audit on existing codebase.",
+    !buildArtifact && goalArtifact && "> ⚠️ No build.md found — audit has no build baseline.",
+    designArtifact && "> ✅ design.md found — checking compliance with design contract.",
+    fixArtifact && "> ℹ️ fix.md present — check that recent fixes haven't introduced structural drift.",
+  ].filter(Boolean) as string[];
 
   const artifact = [
     "# Audit",
@@ -271,38 +324,20 @@ export async function run(args: {
     `**Goal:** ${goalLine}`,
     focus ? `**Focus:** ${focus}` : "",
     `**Tier:** ${tierLabel}`,
+    isAiNative ? "**AI-native patterns:** included" : "",
     ...contextNotes,
     "",
     tierNote,
     "",
-    "## Must Fix",
-    "<!-- Address these before shipping or sharing this code -->",
+    ...sourceBlock,
+    ...findingInstructions,
     "",
-    ...renderFindings(must),
-    "## Should Fix",
-    "<!-- Address before next release or when touching this area -->",
-    "",
-    ...renderFindings(should),
-    "## Consider Later",
-    "<!-- Worth doing at scale — not urgent at current tier -->",
-    "",
-    ...renderFindings(consider),
-    "## Design contract compliance",
-    designArtifact
-      ? "<!-- Check findings against the contract in design.md -->"
-      : "<!-- No design.md found — run `waypoint_design` to establish a contract, then re-audit -->",
-    "- [ ] All Must Fix items from the design contract are addressed",
-    "- [ ] Structure matches design.md recommendations",
-    "",
-    "## Audit summary",
-    `| Severity | Count |`,
-    `|----------|-------|`,
-    `| Must Fix | ${must.length} |`,
-    `| Should Fix | ${should.length} |`,
-    `| Consider Later | ${consider.length} |`,
-    "",
-    "**Overall verdict:**",
-    "<!-- ✅ Clean | ⚠️ Needs attention | ❌ Significant issues -->",
+    ...structuralSection,
+    ...complianceSection,
+    "## Audit verdict",
+    "**Overall:** <!-- ✅ Clean | ⚠️ Needs attention | ❌ Significant issues -->",
+    "**Must Fix count:** <!-- fill in -->",
+    "**Should Fix count:** <!-- fill in -->",
     "",
     `_Generated by waypoint_audit (${tierLabel}) — ${new Date().toISOString()}_`,
   ]
@@ -311,33 +346,37 @@ export async function run(args: {
 
   await saveArtifact(workspacePath, "audit.md", artifact);
 
-  const hasMust = must.length > 0;
-  const hasShould = should.length > 0;
-  const nextStep = hasMust
-    ? "Run `waypoint_fix` for Must Fix items — minimal targeted patches. Then re-run `waypoint_audit` to confirm."
-    : hasShould
-      ? "No Must Fix items. Run `waypoint_improve` to work through Should Fix items as structured refactors."
-      : "No Must Fix or Should Fix items. Run `waypoint_review` for a final pre-ship quality check.";
+  const nextStep = structuralFindings.some(f => f.severity[tierKey] === "must")
+    ? "Structural issues found — address those first, then run `waypoint_fix` for source-level findings."
+    : "Review the findings above. Run `waypoint_fix` for Must Fix items, then re-run `waypoint_audit` to confirm.";
 
   return [
-    "## waypoint_audit — Audit complete",
+    "## waypoint_audit — Audit ready",
     "",
     `**Tier:** ${tierLabel}`,
     `**Goal:** ${goalLine}`,
     focus ? `**Focus:** ${focus}` : "",
-    isAiNative ? "**AI-native patterns:** checked" : "",
+    isAiNative ? "**AI-native patterns:** included" : "",
     "",
-    "### Findings summary",
-    `- **Must Fix:** ${must.length} — address before shipping`,
-    `- **Should Fix:** ${should.length} — address before next release`,
-    `- **Consider Later:** ${consider.length} — low urgency at current tier`,
+    "### Source context",
+    sourceCtx.fileCount > 0
+      ? `Read ${sourceCtx.fileCount} files (${sourceCtx.totalLines} lines)${sourceCtx.truncated ? " — capped, large codebase" : ""}.`
+      : "No source files found — structural checks only.",
+    sourceCtx.fileCount > 0
+      ? `Files: ${Object.keys(sourceCtx.files).join(", ")}`
+      : "",
+    "",
+    "### Structural checks",
+    structuralFindings.length > 0
+      ? structuralFindings.map(f => `- ⚠️ **${f.label}** (${f.severity[tierKey]})`).join("\n")
+      : "- ✅ All structural checks passed",
+    "",
+    "### Next step",
+    "Review `audit.md` — findings are evidence-based against the source files read above.",
+    nextStep,
     "",
     "### Artifact saved",
     "`audit.md` written to `.waypoint/audit.md`.",
-    "Work through each checklist item — check off as you investigate and act.",
-    "",
-    "### Suggested next step",
-    nextStep,
   ]
     .filter(l => l !== undefined)
     .join("\n");

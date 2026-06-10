@@ -3,35 +3,35 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 export const definition = {
   name: "waypoint_debug",
   description:
-    "Read-only diagnostics. Mode troubleshoot = root cause framing. Mode trace = execution path analysis.",
+    "Diagnostic frameworks for a reported symptom — writes debug.md. Does not edit source files or run code. Mode troubleshoot = root cause framing (default, works for most problems); mode trace = execution path analysis.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       mode: {
         type: "string",
         enum: ["troubleshoot", "trace"],
         description:
-          "troubleshoot = root cause framing. trace = execution path analysis.",
+          "troubleshoot = root cause framing (default — use when you're not sure). trace = execution path analysis, use when you need to follow exactly what runs step by step.",
       },
       symptom: {
         type: "string",
         description: "Observed symptom or failure to diagnose (optional).",
       },
     },
-    required: ["workspacePath", "mode"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
-  mode: "troubleshoot" | "trace";
+  workspacePath?: string;
+  mode?: "troubleshoot" | "trace";
   symptom?: string;
 }): Promise<string> {
-  const { workspacePath, mode, symptom } = args;
+  const { workspacePath = process.cwd(), mode = "troubleshoot", symptom } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const buildArtifact = await getArtifact(workspacePath, "build.md");

@@ -3,13 +3,13 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 export const definition = {
   name: "waypoint_improve",
   description:
-    "Propose refinements. Distinguish must-haves from optional enhancements.",
+    "Propose and prioritize improvements across three tiers — writes improve.md. Does not edit source files. Run after waypoint_measure or waypoint_audit.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       area: {
         type: "string",
@@ -17,18 +17,19 @@ export const definition = {
           "Specific area to improve (optional). Omit to generate improvements across all areas.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   area?: string;
 }): Promise<string> {
-  const { workspacePath, area } = args;
+  const { workspacePath = process.cwd(), area } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const goalArtifact = await getArtifact(workspacePath, "goal.md");
+  const auditArtifact = await getArtifact(workspacePath, "audit.md");
   const measureArtifact = await getArtifact(workspacePath, "measure.md");
   const buildArtifact = await getArtifact(workspacePath, "build.md");
 
@@ -42,6 +43,22 @@ export async function run(args: {
 
   const goalLine = goalArtifact.match(/^# Goal\n+(.+)/m)?.[1] ?? "(goal not parsed)";
   const hasMeasure = !!measureArtifact;
+  const hasAudit = !!auditArtifact;
+
+  // Extract structural findings section from audit.md to surface as context
+  const auditFindings = auditArtifact
+    ? auditArtifact.match(/## Structural findings\n([\s\S]*?)(?=\n##|_Generated)/)?.[1]?.trim() ?? null
+    : null;
+  const auditFindingsClean = auditFindings && auditFindings !== "_None detected._" ? auditFindings : null;
+
+  const contextBlock = [
+    hasAudit && auditFindingsClean
+      ? `## Audit signals\n_From audit.md — structural findings to address:_\n${auditFindingsClean}`
+      : hasAudit
+      ? "## Audit signals\n_audit.md present — no structural findings flagged._"
+      : "## Audit signals\n_No audit.md found — run `waypoint_audit` for data-driven improvements._",
+    "",
+  ];
 
   const artifact = [
     "# Improve",
@@ -52,6 +69,9 @@ export async function run(args: {
       ? "\n> ⚠️ No measure.md found — running `waypoint_measure` first gives better improvement signals."
       : "",
     "",
+    "> **Instructions for Claude:** Review the audit signals above and any measure.md shortfalls. Populate each tier below with specific, actionable improvements — not placeholders. Must-have = correctness/reliability issues from the audit. Should-have = quality gaps. Nice-to-have = optional enhancements.",
+    "",
+    ...contextBlock,
     "## Must-have improvements",
     "<!-- Fixes that affect correctness, reliability, or core usability — do these now -->",
     "- [ ] ",
@@ -100,6 +120,12 @@ export async function run(args: {
     "- **Must-have** — correctness and reliability issues; do these now",
     "- **Should-have** — meaningful quality improvements; do before next release",
     "- **Nice-to-have** — optional enhancements; defer unless time allows",
+    "",
+    hasAudit
+      ? `> Audit context embedded — ${auditFindingsClean ? "structural findings included as Must-have seeds" : "no structural findings to carry over"}.`
+      : "> No audit.md — run `waypoint_audit` first for data-driven improvements.",
+    "",
+    "> **Now:** Using the audit signals and goal context, populate each tier with specific, actionable items. Must-have items should come from audit findings or measure shortfalls. Then summarise the top priorities for the user.",
     "",
     "### Artifact saved",
     "`improve.md` written to `.waypoint/improve.md`.",

@@ -3,13 +3,13 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 export const definition = {
   name: "waypoint_compare",
   description:
-    "Present decision tradeoffs, comparison methods, UI mockups if relevant.",
+    "Evaluate decision tradeoffs and record choices — writes compare.md. Does not edit source files. Run after waypoint_research.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       decision: {
         type: "string",
@@ -17,15 +17,15 @@ export const definition = {
           "Specific decision to evaluate (optional). Omit to evaluate all open decisions from research.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   decision?: string;
 }): Promise<string> {
-  const { workspacePath, decision } = args;
+  const { workspacePath = process.cwd(), decision } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const goalArtifact = await getArtifact(workspacePath, "goal.md");
@@ -48,6 +48,8 @@ export async function run(args: {
     `**Goal:** ${goalLine}`,
     decision ? `**Decision under evaluation:** ${decision}` : "",
     !hasResearch ? "\n> ⚠️ No research.md found — options may be incomplete. Run `waypoint_research` first." : "",
+    "",
+    "> **Instructions for Claude:** For the decision below, propose 2-3 concrete, named options (not placeholders). Fill in pros, cons, and fit for each based on the goal and any research findings. Then write a clear Recommended line with your rationale.",
     "",
     "## Decision log",
     "<!-- Record each key decision, the options considered, and the choice made -->",
@@ -88,11 +90,7 @@ export async function run(args: {
       ? "\n> No research.md found — consider running `waypoint_research` first for more informed options."
       : "",
     "",
-    "### How to use compare.md",
-    "1. Fill in the decision table — one row per option",
-    "2. State pros, cons, and fit for each",
-    "3. Write a **Recommended** line with clear rationale",
-    "4. List eliminated approaches to avoid revisiting them",
+    "> **Now:** Propose 2-3 concrete named options for the decision above — not \"Option A/B/C\". Fill in the tradeoff table and write a Recommended line with your rationale. Then present the recommendation to the user.",
     "",
     "### Artifact saved",
     "`compare.md` written to `.waypoint/compare.md`.",

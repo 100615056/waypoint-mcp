@@ -3,13 +3,13 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 export const definition = {
   name: "waypoint_test",
   description:
-    "Verify feature-level requirements. Generate test checklists and prompts.",
+    "Generate test checklists and prompts for feature requirements — writes test.md. Does not run tests or edit source files. Run after waypoint_build.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       feature: {
         type: "string",
@@ -17,15 +17,15 @@ export const definition = {
           "Specific feature or behavior to test (optional). Omit to test all built features.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   feature?: string;
 }): Promise<string> {
-  const { workspacePath, feature } = args;
+  const { workspacePath = process.cwd(), feature } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const buildArtifact = await getArtifact(workspacePath, "build.md");

@@ -2,28 +2,29 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 
 export const definition = {
   name: "waypoint_fix",
-  description: "Targeted bug patches with minimal footprint.",
+  description:
+    "Generate a targeted fix prompt and checklist for a specific bug — writes fix.md. Does not edit source files. Run waypoint_debug first to confirm root cause.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       bug: {
         type: "string",
         description: "Description of the bug to fix (optional). Omit to review existing fix.md.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   bug?: string;
 }): Promise<string> {
-  const { workspacePath, bug } = args;
+  const { workspacePath = process.cwd(), bug } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const buildArtifact = await getArtifact(workspacePath, "build.md");

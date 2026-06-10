@@ -1,34 +1,84 @@
-import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
+import { getBaseContext, getArtifact, saveArtifact, clearArtifacts } from "../context.js";
 
 export const definition = {
   name: "waypoint_goal",
   description:
-    "Define or refine the project goal. Analyzes existing code and business logic if present.",
+    "Start here. Define or refine the project goal — writes goal.md. Run before all other waypoint tools. If a goal already exists, calling with a new goal will ask you to confirm before archiving the current cycle.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       goal: {
         type: "string",
         description:
           "The goal to define or refine. Omit to review an existing goal.md.",
       },
+      confirmArchive: {
+        type: "boolean",
+        description:
+          "Set to true to confirm archiving the existing cycle and starting a new one. Required when a goal already exists and you are providing a new goal.",
+      },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   goal?: string;
+  confirmArchive?: boolean;
 }): Promise<string> {
-  const { workspacePath, goal } = args;
+  const { workspacePath = process.cwd(), goal, confirmArchive } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const existing = await getArtifact(workspacePath, "goal.md");
+
+  // When a new goal is given and a prior cycle exists, require explicit confirmation before archiving
+  if (goal && existing && !confirmArchive) {
+    const previousGoal = existing.match(/^# Goal\n+(.+)/m)?.[1] ?? "(unknown)";
+    return [
+      "## waypoint_goal — Existing cycle detected",
+      "",
+      `**Current goal:** ${previousGoal}`,
+      "",
+      "Proceeding will archive the current cycle (all .waypoint artifacts will be moved to previous.md) and start a new one.",
+      "",
+      "**To confirm:** call `waypoint_goal` again with `confirmArchive: true`.",
+      "**To cancel:** call `waypoint_goal` without a `goal` param to review the existing goal instead.",
+    ].join("\n");
+  }
+
+  // When a new goal is given and a prior cycle exists, snapshot it to previous.md
+  if (goal && existing && confirmArchive) {
+    const cycleArtifacts = [
+      "research.md", "compare.md", "plan.md", "design.md",
+      "build.md", "test.md", "audit.md", "measure.md", "review.md",
+    ];
+    const present = (
+      await Promise.all(cycleArtifacts.map(n => getArtifact(workspacePath, n)))
+    )
+      .map((content, i) => (content ? cycleArtifacts[i] : null))
+      .filter(Boolean) as string[];
+
+    const previousGoal = existing.match(/^# Goal\n+(.+)/m)?.[1] ?? "(unknown)";
+    const previousMd = [
+      "# Previous cycle",
+      "",
+      `**Goal:** ${previousGoal}`,
+      `**Closed:** ${new Date().toISOString()}`,
+      `**Artifacts at close:** ${present.length > 0 ? present.join(", ") : "none"}`,
+      "",
+      "## Previous goal",
+      existing,
+    ].join("\n");
+
+    await saveArtifact(workspacePath, "previous.md", previousMd);
+    // Clear stale cycle artifacts so they don't pollute the new cycle's context
+    await clearArtifacts(workspacePath, present);
+  }
 
   const goalStatement = goal ?? existing?.match(/^# Goal\n+(.+)/m)?.[1] ?? null;
 
@@ -99,6 +149,7 @@ export async function run(args: {
     "",
     "### Artifact saved",
     "`goal.md` written to `.waypoint/goal.md`.",
+    existing ? "Previous cycle archived to `previous.md` and stale artifacts cleared." : "",
     "Fill in **Success criteria** and **Out of scope** before moving to `waypoint_research`.",
     "",
     "### Suggested next step",

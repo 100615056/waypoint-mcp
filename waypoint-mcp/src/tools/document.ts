@@ -2,13 +2,14 @@ import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
 
 export const definition = {
   name: "waypoint_document",
-  description: "Generate documentation for the current state of the project.",
+  description:
+    "Generate a documentation scaffold for the current project state — writes docs.md. Does not edit source files.",
   inputSchema: {
     type: "object" as const,
     properties: {
       workspacePath: {
         type: "string",
-        description: "Absolute path to the workspace root.",
+        description: "Absolute path to the workspace root. Defaults to the current working directory.",
       },
       audience: {
         type: "string",
@@ -16,15 +17,15 @@ export const definition = {
           "Intended audience for the documentation (optional). E.g. 'new contributors', 'end users', 'API consumers'.",
       },
     },
-    required: ["workspacePath"],
+    required: [],
   },
 };
 
 export async function run(args: {
-  workspacePath: string;
+  workspacePath?: string;
   audience?: string;
 }): Promise<string> {
-  const { workspacePath, audience } = args;
+  const { workspacePath = process.cwd(), audience } = args;
 
   const ctx = await getBaseContext(workspacePath);
   const goalArtifact = await getArtifact(workspacePath, "goal.md");
