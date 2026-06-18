@@ -1,6 +1,11 @@
 {
   "name": "@waycraft/waypoint-mcp",
-  "version": "0.2.2",
+  "version": "0.2.4",
+  "mcpName": "io.github.100615056/waypoint",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/100615056/waypoint-mcp.git"
+  },
   "description": "The right questions at every step of building software. 14 guided tools from goal to ship — for engineers and non-technical teams.",
   "type": "module",
   "author": "Angelica Cusipag",
