@@ -3,7 +3,8 @@
   "version": "0.2.1",
   "description": "The right questions at every step of building software. 14 guided tools from goal to ship — for engineers and non-technical teams.",
   "type": "module",
-  "license": "PolyForm-Noncommercial-1.0.0",
+  "author": "Angelica Cusipag",
+  "license": "MIT",
   "keywords": [
     "mcp",
     "claude",
