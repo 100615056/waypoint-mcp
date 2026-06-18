@@ -156,10 +156,10 @@ claude mcp add mcp-manager npx @waycraft/mcp-manager
 
 If something didn't click, felt missing, or you found a better way to use it — I'd love to hear it.
 
-→ [GitHub Discussions](https://github.com/explorenav-dev/waypoint-mcp/discussions)
+→ [GitHub Discussions](https://github.com/100615056/waypoint-mcp/discussions)
 
 ---
 
 ## License
 
-[PolyForm Noncommercial License 1.0](https://polyformproject.org/licenses/noncommercial/1.0.0/) — free for personal and non-commercial use.
+[MIT](LICENSE)
