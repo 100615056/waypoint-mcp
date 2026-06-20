@@ -156,7 +156,5 @@ export async function run(args: {
     "### Artifact saved",
     "`debug.md` written to `.waypoint/debug.md`.",
     "",
-    "### Suggested next step",
-    "Run `waypoint_fix` once the root cause is confirmed.",
   ].join("\n");
 }

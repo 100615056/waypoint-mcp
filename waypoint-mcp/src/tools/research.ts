@@ -109,10 +109,7 @@ export async function run(args: {
     "### Artifact saved",
     "`research.md` written to `.waypoint/research.md`.",
     "",
-    "> **Now:** Synthesize findings for the goal above into each section of `research.md` — prior art, applicable patterns, risks, and open decisions. Use your knowledge of the domain. Then summarise the top 2-3 open decisions the user will need to resolve in `waypoint_compare`.",
-    "",
-    "### Suggested next step",
-    "Run `waypoint_compare` to turn research findings into concrete decision tradeoffs.",
+    "> **Now:** Open `.waypoint/research.md` and fill in every section — prior art, applicable patterns, risks, and open decisions. Use your knowledge of the domain. Do not call another waypoint tool until all sections are complete. Then summarise the top 2-3 open decisions for the user.",
   ]
     .filter((l) => l !== undefined)
     .join("\n");

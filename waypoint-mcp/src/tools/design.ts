@@ -416,8 +416,6 @@ export async function run(args: {
     "`design.md` written to `.waypoint/design.md`.",
     "Fill in **Design decisions** for any project-specific deviations, then complete the **Contract for Build** checklist.",
     "",
-    "### Suggested next step",
-    "Run `waypoint_build` — it will read `design.md` as a constraint alongside `plan.md`.",
   ]
     .filter(l => l !== undefined)
     .join("\n");

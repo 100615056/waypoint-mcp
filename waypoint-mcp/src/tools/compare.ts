@@ -90,13 +90,10 @@ export async function run(args: {
       ? "\n> No research.md found — consider running `waypoint_research` first for more informed options."
       : "",
     "",
-    "> **Now:** Propose 2-3 concrete named options for the decision above — not \"Option A/B/C\". Fill in the tradeoff table and write a Recommended line with your rationale. Then present the recommendation to the user.",
+    "> **Now:** Open `.waypoint/compare.md` and propose 2-3 concrete named options — not \"Option A/B/C\". Fill in the tradeoff table and write a Recommended line with your rationale. Do not call another waypoint tool until all sections are complete. Then present the recommendation to the user.",
     "",
     "### Artifact saved",
     "`compare.md` written to `.waypoint/compare.md`.",
-    "",
-    "### Suggested next step",
-    "Run `waypoint_plan` once decisions are recorded.",
   ]
     .filter((l) => l !== undefined)
     .join("\n");

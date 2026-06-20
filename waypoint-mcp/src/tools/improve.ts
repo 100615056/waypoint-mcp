@@ -125,13 +125,11 @@ export async function run(args: {
       ? `> Audit context embedded — ${auditFindingsClean ? "structural findings included as Must-have seeds" : "no structural findings to carry over"}.`
       : "> No audit.md — run `waypoint_audit` first for data-driven improvements.",
     "",
-    "> **Now:** Using the audit signals and goal context, populate each tier with specific, actionable items. Must-have items should come from audit findings or measure shortfalls. Then summarise the top priorities for the user.",
+    "> **Now:** Open `.waypoint/improve.md` and populate each tier with specific, actionable items from audit findings and measure shortfalls. Do not call another waypoint tool until all sections are complete. Then summarise the top priorities for the user.",
     "",
     "### Artifact saved",
     "`improve.md` written to `.waypoint/improve.md`.",
     "",
-    "### Suggested next step",
-    "Run `waypoint_document` to document the improved state, or `waypoint_review` for a final quality check.",
   ]
     .filter((l) => l !== undefined)
     .join("\n");

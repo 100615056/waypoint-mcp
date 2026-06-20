@@ -117,8 +117,6 @@ export async function run(args: {
     "`build.md` written to `.waypoint/build.md`.",
     "Fill in the implementation checklist as you work.",
     "",
-    "### Suggested next step",
-    "Run `waypoint_test` to verify feature-level requirements once implementation is ready.",
   ]
     .filter((l) => l !== undefined)
     .join("\n");

@@ -114,10 +114,8 @@ export async function run(args: {
     "### Artifact saved",
     "`plan.md` written to `.waypoint/plan.md`.",
     "",
-    "> **Now:** Break the goal into 2-4 ordered milestones. For each: name the deliverable, write a concrete done-when criterion, and list the key steps. Add any real risks you can identify. Then summarise the milestones for the user.",
+    "> **Now:** Open `.waypoint/plan.md` and break the goal into 2-4 ordered milestones. For each: name the deliverable, write a concrete done-when criterion, and list the key steps. Add any real risks. Do not call another waypoint tool until all sections are complete. Then summarise the milestones for the user.",
     "",
-    "### Suggested next step",
-    "Run `waypoint_build` to scaffold implementation from this plan.",
   ]
     .filter((l) => l !== undefined)
     .join("\n");

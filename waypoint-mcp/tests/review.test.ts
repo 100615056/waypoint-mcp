@@ -49,7 +49,7 @@ section("waypoint_review — partial artifacts");
   const text: string = res.result.content[0].text;
   assert(!res.result.isError, "no error flag");
   assertIncludes(text, "Final review generated", "shows generated heading");
-  assertIncludes(text, "✅", "shows at least one present artifact");
+  assert(text.includes("✅") || text.includes("⚠️"), "shows at least one present artifact (complete or incomplete)");
   assertIncludes(text, "❌", "shows missing artifacts");
   assertIncludes(text, "review.md", "mentions artifact");
 }
@@ -71,7 +71,7 @@ await sendToServer([callTool(1, "waypoint_document", { workspacePath: workspace 
 
 // ── Test 4: full artifact chain ───────────────────────────────────────────────
 
-section("waypoint_review — full artifact chain");
+section("waypoint_review — full artifact chain with completeness grading");
 {
   const [res] = await sendToServer([
     callTool(1, "waypoint_review", { workspacePath: workspace }),
@@ -81,7 +81,8 @@ section("waypoint_review — full artifact chain");
   assertIncludes(text, "Final review generated", "shows generated heading");
   assertIncludes(text, "Ship waypoint-mcp", "goal echoed");
   assertIncludes(text, "13/13", "all 13 artifacts present");
-  assertIncludes(text, "All artifacts present", "confirms complete inventory");
+  // Completeness grading: unfilled artifacts should show ⚠️
+  assertIncludes(text, "⚠️", "flags incomplete artifacts with warning");
 }
 
 // ── Test 5: artifact on disk ──────────────────────────────────────────────────
