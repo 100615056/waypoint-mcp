@@ -114,7 +114,5 @@ export async function run(args: {
     "### Artifact saved",
     "`docs.md` written to `.waypoint/docs.md`.",
     "",
-    "### Suggested next step",
-    "Run `waypoint_review` for a final quality check before shipping.",
   ].join("\n");
 }

@@ -110,8 +110,6 @@ export async function run(args: {
     "### Artifact saved",
     "`measure.md` written to `.waypoint/measure.md`.",
     "",
-    "### Suggested next step",
-    "Run `waypoint_improve` to identify refinements based on what fell short.",
   ]
     .filter((l) => l !== undefined)
     .join("\n");

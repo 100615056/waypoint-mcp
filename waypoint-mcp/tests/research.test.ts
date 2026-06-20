@@ -67,7 +67,7 @@ section("waypoint_research — no topic (full goal)");
   assertIncludes(text, "Research brief generated", "shows generated heading");
   assertIncludes(text, "Ship waypoint-mcp", "goal echoed in output");
   assertIncludes(text, "research.md", "mentions artifact");
-  assertIncludes(text, "waypoint_compare", "suggests next step");
+  assertIncludes(text, "Do not call another waypoint tool", "contains completion gate");
 }
 
 // ── Test 4: call with topic → scoped research ────────────────────────────────
@@ -95,6 +95,18 @@ section("waypoint_research — artifact on disk");
   assertIncludes(artifact, "Key questions to answer", "has key questions section");
   assertIncludes(artifact, "Areas to investigate", "has areas section");
   assertIncludes(artifact, "Open decisions", "has open decisions section");
+}
+
+// ── Test 6: no forward nudge in output ───────────────────────────────────────
+
+section("waypoint_research — no forward nudge");
+{
+  const [res] = await sendToServer([
+    callTool(1, "waypoint_research", { workspacePath: workspace }),
+  ]) as any[];
+  const text: string = res.result.content[0].text;
+  assert(!text.includes("Suggested next step"), "no 'Suggested next step' in output");
+  assertIncludes(text, "Do not call another waypoint tool", "contains completion gate");
 }
 
 // ── Done ──────────────────────────────────────────────────────────────────────

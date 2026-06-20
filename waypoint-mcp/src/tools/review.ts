@@ -1,4 +1,4 @@
-import { getBaseContext, getArtifact, saveArtifact } from "../context.js";
+import { getBaseContext, getArtifact, saveArtifact, checkCompleteness } from "../context.js";
 
 export const definition = {
   name: "waypoint_review",
@@ -50,18 +50,24 @@ export async function run(args: {
 
   const goalLine = goalArtifact.match(/^# Goal\n+(.+)/m)?.[1] ?? "(goal not parsed)";
 
-  // inventory all artifacts
-  const inventory: { name: string; present: boolean }[] = [];
+  // inventory all artifacts with completeness grading
+  const inventory: { name: string; present: boolean; complete: boolean; issues: string[] }[] = [];
   for (const name of ALL_ARTIFACTS) {
     const content = await getArtifact(workspacePath, name);
-    inventory.push({ name, present: !!content });
+    if (content) {
+      const { complete, issues } = checkCompleteness(content);
+      inventory.push({ name, present: true, complete, issues });
+    } else {
+      inventory.push({ name, present: false, complete: false, issues: [] });
+    }
   }
 
   const present = inventory.filter((a) => a.present);
   const missing = inventory.filter((a) => !a.present);
+  const incomplete = present.filter((a) => !a.complete);
 
   const inventoryRows = inventory.map(
-    (a) => `| ${a.name} | ${a.present ? "✅" : "❌"} |`
+    (a) => `| ${a.name} | ${!a.present ? "❌ Missing" : a.complete ? "✅ Complete" : "⚠️ Incomplete"} |`
   );
 
   const artifact = [
@@ -70,14 +76,24 @@ export async function run(args: {
     `**Goal:** ${goalLine}`,
     "",
     "## Artifact inventory",
-    "| Artifact | Present |",
-    "|----------|---------|",
+    "| Artifact | Status |",
+    "|----------|--------|",
     ...inventoryRows,
     "",
-    `**${present.length} of ${ALL_ARTIFACTS.length} artifacts present.**`,
+    `**${present.length} of ${ALL_ARTIFACTS.length} artifacts present, ${present.length - incomplete.length} complete.**`,
     missing.length > 0
       ? `Missing: ${missing.map((a) => a.name).join(", ")}`
       : "All artifacts present.",
+    ...(incomplete.length > 0
+      ? [
+          "",
+          "### Incomplete artifacts",
+          ...incomplete.flatMap((a) => [
+            `**${a.name}:**`,
+            ...a.issues.map((i) => `- ${i}`),
+          ]),
+        ]
+      : []),
     "",
     "## Pre-ship checklist",
     "<!-- Work through these before marking done -->",
@@ -123,8 +139,8 @@ export async function run(args: {
     "",
     `**Goal:** ${goalLine}`,
     "",
-    `### Artifact inventory: ${present.length}/${ALL_ARTIFACTS.length} present`,
-    ...inventory.map((a) => `- ${a.present ? "✅" : "❌"} ${a.name}`),
+    `### Artifact inventory: ${present.length}/${ALL_ARTIFACTS.length} present, ${present.length - incomplete.length} complete`,
+    ...inventory.map((a) => `- ${!a.present ? "❌" : a.complete ? "✅" : "⚠️"} ${a.name}`),
     "",
     "### Pre-ship checklist covers",
     "Goal, code quality, tests, documentation, security",
@@ -133,8 +149,11 @@ export async function run(args: {
     "`review.md` written to `.waypoint/review.md`.",
     "Complete the checklist and record your verdict.",
     "",
+    ...(incomplete.length > 0
+      ? [`### ⚠️ ${incomplete.length} artifact(s) have unfilled sections`, `Complete these before shipping: ${incomplete.map(a => a.name).join(", ")}`]
+      : []),
     missing.length > 0
       ? `### Missing artifacts\nConsider running: ${missing.map((a) => `\`waypoint_${a.name.replace(".md", "")}\``).join(", ")}`
-      : "### All artifacts present — ready for final checklist.",
+      : incomplete.length === 0 ? "### All artifacts present and complete — ready for final checklist." : "",
   ].join("\n");
 }

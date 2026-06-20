@@ -150,9 +150,7 @@ export async function run(args: {
     "### Artifact saved",
     "`goal.md` written to `.waypoint/goal.md`.",
     existing ? "Previous cycle archived to `previous.md` and stale artifacts cleared." : "",
-    "Fill in **Success criteria** and **Out of scope** before moving to `waypoint_research`.",
     "",
-    "### Suggested next step",
-    "Run `waypoint_research` to surface best practices and open questions for this goal.",
+    "> **Now:** Open `.waypoint/goal.md` and fill in **Success criteria** and **Out of scope** before calling any other waypoint tool.",
   ].join("\n");
 }

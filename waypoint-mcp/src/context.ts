@@ -162,6 +162,55 @@ export async function clearArtifacts(
   );
 }
 
+// ─── Artifact completeness check ─────────────────────────────────────────────
+
+const PLACEHOLDER_PATTERNS = [
+  /^> \*\*Instructions for Claude:\*\*/m,
+  /^> \*\*Now:\*\*/m,
+  /<!-- .*(fill|TODO|placeholder).* -->/i,
+  /^- \[ \] $/m,
+  /\*\*Verdict:\*\* $/m,
+  /\*\*Rationale:\*\* $/m,
+];
+
+export function checkCompleteness(content: string): { complete: boolean; issues: string[] } {
+  const issues: string[] = [];
+  for (const pattern of PLACEHOLDER_PATTERNS) {
+    if (pattern.test(content)) {
+      issues.push(`Contains unfilled placeholder: ${pattern.source.slice(0, 60)}`);
+    }
+  }
+  const sectionHeaders = content.match(/^##+ .+/gm) ?? [];
+  for (const header of sectionHeaders) {
+    const idx = content.indexOf(header);
+    const nextHeader = content.indexOf('\n#', idx + header.length);
+    const sectionBody = content.slice(idx + header.length, nextHeader === -1 ? undefined : nextHeader).trim();
+    if (sectionBody.length < 10) {
+      issues.push(`Empty section: ${header.trim()}`);
+    }
+  }
+  return { complete: issues.length === 0, issues };
+}
+
+export async function checkPriorArtifact(
+  workspacePath: string,
+  filename: string,
+  toolName: string,
+): Promise<string | null> {
+  const content = await getArtifact(workspacePath, filename);
+  if (!content) return null;
+  const { complete, issues } = checkCompleteness(content);
+  if (complete) return null;
+  return [
+    `## ${toolName} — Prior artifact incomplete`,
+    "",
+    `\`${filename}\` has unfilled sections that should be completed first:`,
+    ...issues.map(i => `- ${i}`),
+    "",
+    `> **Now:** Open \`.waypoint/${filename}\` and fill in the incomplete sections above before proceeding.`,
+  ].join("\n");
+}
+
 export async function saveArtifact(
   workspacePath: string,
   filename: string,

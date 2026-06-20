@@ -371,9 +371,7 @@ export async function run(args: {
       ? structuralFindings.map(f => `- ⚠️ **${f.label}** (${f.severity[tierKey]})`).join("\n")
       : "- ✅ All structural checks passed",
     "",
-    "### Next step",
-    "Review `audit.md` — findings are evidence-based against the source files read above.",
-    nextStep,
+    "> **Now:** Open `.waypoint/audit.md` and fill in every finding section with evidence from the source files above. Do not call another waypoint tool until all sections are complete.",
     "",
     "### Artifact saved",
     "`audit.md` written to `.waypoint/audit.md`.",

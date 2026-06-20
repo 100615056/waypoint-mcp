@@ -107,8 +107,6 @@ export async function run(args: {
     "### Artifact saved",
     "`fix.md` written to `.waypoint/fix.md`.",
     "",
-    "### Suggested next step",
-    "Run `waypoint_test` after applying the fix to confirm no regressions.",
   ]
     .filter((l) => l !== undefined)
     .join("\n");
