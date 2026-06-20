@@ -1,4 +1,5 @@
 import { getBaseContext, getArtifact, saveArtifact, checkCompleteness } from "../context.js";
+import { loadConfig } from "../config.js";
 
 export const definition = {
   name: "waypoint_review",
@@ -153,6 +154,15 @@ export async function run(args: {
     "",
     "### Pre-ship checklist covers",
     "Goal, code quality, tests, documentation, security",
+    ...await (async () => {
+      const config = await loadConfig(workspacePath);
+      if (!config.requiredBeforePR?.length) return [];
+      const missingRequired = config.requiredBeforePR.filter(
+        name => !inventory.find(i => i.name === name && i.present)
+      );
+      if (missingRequired.length === 0) return ["", "✅ All required artifacts (from waypoint.config.json) are present."];
+      return ["", `### ❌ Required artifacts missing (waypoint.config.json)`, ...missingRequired.map(n => `- ${n}`)];
+    })(),
     "",
     "### Artifact saved",
     "`review.md` written to `.waypoint/review.md`.",
