@@ -350,8 +350,15 @@ export async function run(args: {
     ? "Structural issues found — address those first, then run `waypoint_fix` for source-level findings."
     : "Review the findings above. Run `waypoint_fix` for Must Fix items, then re-run `waypoint_audit` to confirm.";
 
+  const structIssueCount = structuralFindings.length;
+  const tldr = structIssueCount > 0
+    ? `${structIssueCount} structural issue(s) found. Read ${sourceCtx.fileCount} source files. Fill in audit.md before proceeding.`
+    : `No structural issues. Read ${sourceCtx.fileCount} source files. Fill in audit.md before proceeding.`;
+
   return [
     "## waypoint_audit — Audit ready",
+    "",
+    `> **Summary:** ${tldr}`,
     "",
     `**Tier:** ${tierLabel}`,
     `**Goal:** ${goalLine}`,
