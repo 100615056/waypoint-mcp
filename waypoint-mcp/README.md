@@ -41,6 +41,64 @@ Restart Claude Code after editing `mcp.json`.
 
 ---
 
+## Other editors
+
+<details>
+<summary><strong>Cursor</strong></summary>
+
+Add to `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json` globally):
+
+```json
+{
+  "mcpServers": {
+    "waypoint": {
+      "command": "npx",
+      "args": ["@waycraft/waypoint-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>VS Code (Copilot)</strong></summary>
+
+Add to `.vscode/mcp.json` in your project root:
+
+```json
+{
+  "servers": {
+    "waypoint": {
+      "command": "npx",
+      "args": ["@waycraft/waypoint-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Windsurf</strong></summary>
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "waypoint": {
+      "command": "npx",
+      "args": ["@waycraft/waypoint-mcp"]
+    }
+  }
+}
+```
+
+</details>
+
+---
+
 ## The 14 tools
 
 Waypoint covers four phases. Each tool reads your workspace, asks the right questions, and writes a plain-language record of what was decided and why.
