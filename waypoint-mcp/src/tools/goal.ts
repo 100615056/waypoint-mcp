@@ -1,3 +1,5 @@
+import { readFile, appendFile, writeFile } from "fs/promises";
+import { join } from "path";
 import { getBaseContext, getArtifact, saveArtifact, clearArtifacts } from "../context.js";
 
 export const definition = {
@@ -138,6 +140,20 @@ export async function run(args: {
   ].join("\n");
 
   await saveArtifact(workspacePath, "goal.md", artifact);
+
+  // Auto-add .waypoint/ to .gitignore if not already present
+  const gitignorePath = join(workspacePath, ".gitignore");
+  try {
+    const existing_gi = await readFile(gitignorePath, "utf8").catch(() => "");
+    if (!existing_gi.includes(".waypoint")) {
+      const entry = existing_gi.endsWith("\n") || existing_gi === "" ? ".waypoint/\n" : "\n.waypoint/\n";
+      if (existing_gi === "") {
+        await writeFile(gitignorePath, ".waypoint/\n", "utf8");
+      } else {
+        await appendFile(gitignorePath, entry, "utf8");
+      }
+    }
+  } catch { /* non-fatal — skip if filesystem issue */ }
 
   return [
     "## waypoint_goal — Goal captured",

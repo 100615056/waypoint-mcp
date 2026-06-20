@@ -134,8 +134,17 @@ export async function run(args: {
 
   await saveArtifact(workspacePath, "review.md", artifact);
 
+  const completeCount = present.length - incomplete.length;
+  const reviewTldr = incomplete.length > 0
+    ? `${present.length}/${ALL_ARTIFACTS.length} artifacts present, ${incomplete.length} incomplete. Complete those before shipping.`
+    : missing.length > 0
+      ? `${present.length}/${ALL_ARTIFACTS.length} artifacts present, all complete. ${missing.length} missing.`
+      : `All ${ALL_ARTIFACTS.length} artifacts present and complete. Ready for checklist.`;
+
   return [
     "## waypoint_review — Final review generated",
+    "",
+    `> **Summary:** ${reviewTldr}`,
     "",
     `**Goal:** ${goalLine}`,
     "",
