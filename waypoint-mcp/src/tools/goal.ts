@@ -14,7 +14,7 @@ export const definition = {
       goal: {
         type: "string",
         description:
-          "The goal to define or refine. Omit to review an existing goal.md.",
+          "What you want to build or achieve. A good goal answers: what capability are we delivering, who benefits, and what does done look like. Example: 'Add email/password auth so users can save preferences across devices — done when login, signup, and session persistence work end-to-end'. Omit to review an existing goal.md.",
       },
       confirmArchive: {
         type: "boolean",
