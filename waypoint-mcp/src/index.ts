@@ -20,8 +20,9 @@ import * as improve from "./tools/improve.js";
 import * as document from "./tools/document.js";
 import * as review from "./tools/review.js";
 import * as status from "./tools/status.js";
+import * as start from "./tools/start.js";
 
-const tools = [goal, research, compare, plan, design, build, test, fix, debug, audit, measure, improve, document, review, status];
+const tools = [start, goal, research, compare, plan, design, build, test, fix, debug, audit, measure, improve, document, review, status];
 
 import { createRequire } from "module";
 const { version } = createRequire(import.meta.url)("../package.json");
