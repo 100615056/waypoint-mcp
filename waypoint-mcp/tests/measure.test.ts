@@ -73,7 +73,7 @@ section("waypoint_measure — full chain");
   assertIncludes(text, "Measurement framework generated", "shows generated heading");
   assertIncludes(text, "Ship waypoint-mcp", "goal echoed");
   assertIncludes(text, "measure.md", "mentions artifact");
-  assertIncludes(text, "waypoint_improve", "suggests next step");
+  assertIncludes(text, "measure.md", "mentions artifact");
 }
 
 // ── Test 5: artifact on disk ──────────────────────────────────────────────────

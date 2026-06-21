@@ -1,6 +1,6 @@
 {
   "name": "@waycraft/waypoint-mcp",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "mcpName": "io.github.100615056/waypoint",
   "repository": {
     "type": "git",

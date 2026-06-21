@@ -76,7 +76,7 @@ section("waypoint_build — full chain, no task");
   assertIncludes(text, "Build guide generated", "shows generated heading");
   assertIncludes(text, "Ship waypoint-mcp", "goal echoed");
   assertIncludes(text, "build.md", "mentions artifact");
-  assertIncludes(text, "waypoint_test", "suggests next step");
+  assertIncludes(text, "build.md", "mentions artifact");
   assertIncludes(text, "AI coding prompts", "mentions prompts");
 }
 

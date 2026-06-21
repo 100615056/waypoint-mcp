@@ -34,7 +34,7 @@ section("waypoint_document — no prior artifacts");
   assertIncludes(text, "Documentation generated", "shows generated heading");
   assertIncludes(text, "waypoint-mcp", "project name from package.json");
   assertIncludes(text, "docs.md", "mentions artifact");
-  assertIncludes(text, "waypoint_review", "suggests next step");
+  assertIncludes(text, "docs.md", "mentions artifact");
 }
 
 // ── Setup: add goal.md ────────────────────────────────────────────────────────

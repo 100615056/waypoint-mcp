@@ -165,6 +165,41 @@ const PATTERNS = {
   },
 };
 
+// ─── Bullet-to-concern mapping ───────────────────────────────────────────────
+// Maps bullet text substring → required concern (null = always include).
+// A bullet is included if its required concern is detected, or if it's null.
+
+const BULLET_CONCERNS: Record<string, string | null> = {
+  // Structure bullets
+  "DB calls in handlers": "database",
+  "repository/data-access": "database",
+  "read and write paths": "database",
+  "Repository pattern": "database",
+  "route/handler → service → repository": "database",
+  "Circuit breakers": "api",
+  "ports & adapters": "api",
+  "Unversioned external contracts": "api",
+  "Synchronous calls to non-critical services": "api",
+  "Event-driven side effects": "queue",
+  "Idempotency on all write operations": "queue",
+  "Queue": "queue",
+  "Async agent pipelines": "queue",
+  "cache": "cache",
+  // AI-native bullets are handled by section-level gating
+};
+
+function filterBullets(bullets: string[], concerns: string[]): string[] {
+  return bullets.filter(bullet => {
+    for (const [substring, concern] of Object.entries(BULLET_CONCERNS)) {
+      if (bullet.includes(substring)) {
+        return concern === null || concerns.includes(concern);
+      }
+    }
+    // No mapping found → always include (general best practice)
+    return true;
+  });
+}
+
 // ─── Concern detection ────────────────────────────────────────────────────────
 
 const CONCERN_KEYWORDS: Record<string, string[]> = {
@@ -363,18 +398,27 @@ export async function run(args: {
     ...sourceBlock,
     ...currentStateSection,
     ...concernSection,
-    "## Recommended structure",
-    ...patterns.structure.map(s => `- ${s}`),
-    "",
-    "## Patterns to apply",
-    ...patterns.apply.map(p => `- ${p}`),
-    "",
-    "## Anti-patterns to avoid",
-    ...patterns.avoid.map(a => `- ❌ ${a}`),
-    "",
-    "## AI-native considerations",
-    ...patterns.aiNative.map(n => `- ${n}`),
-    "",
+    ...(() => {
+      const structure = filterBullets(patterns.structure, concerns);
+      return structure.length > 0
+        ? ["## Recommended structure", ...structure.map(s => `- ${s}`), ""]
+        : [];
+    })(),
+    ...(() => {
+      const apply = filterBullets(patterns.apply, concerns);
+      return apply.length > 0
+        ? ["## Patterns to apply", ...apply.map(p => `- ${p}`), ""]
+        : [];
+    })(),
+    ...(() => {
+      const avoid = filterBullets(patterns.avoid, concerns);
+      return avoid.length > 0
+        ? ["## Anti-patterns to avoid", ...avoid.map(a => `- ❌ ${a}`), ""]
+        : [];
+    })(),
+    ...(concerns.includes("ai")
+      ? ["## AI-native considerations", ...patterns.aiNative.map(n => `- ${n}`), ""]
+      : []),
     "## Design decisions",
     "<!-- Record any project-specific choices made here — deviations from the above and why -->",
     "- ",
@@ -407,10 +451,19 @@ export async function run(args: {
     "",
     "### Contract covers",
     concerns.length > 0 ? `- **Plan-specific notes** — ${concerns.join(", ")}` : "",
-    `- **Structure** — ${patterns.structure.length} recommendations`,
-    `- **Patterns to apply** — ${patterns.apply.length} rules`,
-    `- **Anti-patterns to avoid** — ${patterns.avoid.length} rules`,
-    `- **AI-native** — ${patterns.aiNative.length} considerations`,
+    ...(() => {
+      const s = filterBullets(patterns.structure, concerns).length;
+      return s > 0 ? [`- **Structure** — ${s} recommendations`] : [];
+    })(),
+    ...(() => {
+      const a = filterBullets(patterns.apply, concerns).length;
+      return a > 0 ? [`- **Patterns to apply** — ${a} rules`] : [];
+    })(),
+    ...(() => {
+      const v = filterBullets(patterns.avoid, concerns).length;
+      return v > 0 ? [`- **Anti-patterns to avoid** — ${v} rules`] : [];
+    })(),
+    ...(concerns.includes("ai") ? [`- **AI-native** — ${patterns.aiNative.length} considerations`] : []),
     "",
     "### Artifact saved",
     "`design.md` written to `.waypoint/design.md`.",

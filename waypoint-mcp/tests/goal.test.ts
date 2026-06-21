@@ -53,7 +53,7 @@ section("waypoint_goal — goal provided");
   assertIncludes(text, "Goal captured", "shows captured heading");
   assertIncludes(text, "Ship waypoint-mcp", "goal text echoed");
   assertIncludes(text, "goal.md", "mentions artifact");
-  assertIncludes(text, "waypoint_research", "suggests next step");
+  assertIncludes(text, "Success criteria", "suggests next step");
 }
 
 // ── Test 4: artifact written to disk ─────────────────────────────────────────

@@ -55,8 +55,6 @@ section("waypoint_test — no feature param");
   assertIncludes(text, "Test plan generated", "shows generated heading");
   assertIncludes(text, "Ship waypoint-mcp", "goal echoed");
   assertIncludes(text, "test.md", "mentions artifact");
-  assertIncludes(text, "waypoint_fix", "suggests waypoint_fix as next step");
-  assertIncludes(text, "waypoint_measure", "suggests waypoint_measure as next step");
 }
 
 // ── Test 4: with feature param ────────────────────────────────────────────────

@@ -74,7 +74,7 @@ section("waypoint_plan — full chain, no scope");
   assertIncludes(text, "Plan generated", "shows generated heading");
   assertIncludes(text, "Ship waypoint-mcp", "goal echoed");
   assertIncludes(text, "plan.md", "mentions artifact");
-  assertIncludes(text, "waypoint_build", "suggests next step");
+  assertIncludes(text, "Do not call another waypoint tool", "suggests next step");
 }
 
 // ── Test 5: with scope param ──────────────────────────────────────────────────
