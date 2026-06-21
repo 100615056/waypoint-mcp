@@ -17,7 +17,7 @@ section("tools/list");
   const [res] = await sendToServer([listTools()]) as any[];
   const names: string[] = res.result.tools.map((t: any) => t.name);
   assert(names.includes("waypoint_review"), "waypoint_review is listed");
-  assert(names.length === 14, `all 14 tools registered (got ${names.length})`);
+  assert(names.length === 16, `all 16 tools registered (got ${names.length})`);
   const tool = res.result.tools.find((t: any) => t.name === "waypoint_review");
   assert("workspacePath" in (tool?.inputSchema?.properties ?? {}), "workspacePath param exists");
 }
@@ -37,7 +37,7 @@ section("waypoint_review — no goal.md present");
 
 // ── Setup: goal only (minimal artifacts) ─────────────────────────────────────
 
-await sendToServer([callTool(1, "waypoint_goal", { workspacePath: workspace, goal: "Ship waypoint-mcp as a fully working MCP server with 14 tools" })]);
+await sendToServer([callTool(1, "waypoint_goal", { workspacePath: workspace, goal: "Ship waypoint-mcp as a fully working MCP server with 16 tools" })]);
 
 // ── Test 3: partial artifacts — shows inventory with missing ─────────────────
 

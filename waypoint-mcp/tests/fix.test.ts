@@ -57,7 +57,6 @@ section("waypoint_fix — with bug param");
   assertIncludes(text, "Fix guide generated", "shows generated heading");
   assertIncludes(text, "workspacePath contains spaces", "bug echoed");
   assertIncludes(text, "fix.md", "mentions artifact");
-  assertIncludes(text, "waypoint_test", "suggests waypoint_test as next step");
   assertIncludes(text, "Minimal footprint", "mentions minimal footprint principle");
 }
 

@@ -75,7 +75,7 @@ section("waypoint_compare — no decision param");
   assertIncludes(text, "Decision framework generated", "shows generated heading");
   assertIncludes(text, "Ship waypoint-mcp", "goal echoed");
   assertIncludes(text, "compare.md", "mentions artifact");
-  assertIncludes(text, "waypoint_plan", "suggests next step");
+  assertIncludes(text, "Do not call another waypoint tool", "suggests next step");
 }
 
 // ── Test 5: with decision param ───────────────────────────────────────────────

@@ -19,7 +19,7 @@ section("tools/list");
   assert(names.includes("waypoint_debug"), "waypoint_debug is listed");
   const tool = res.result.tools.find((t: any) => t.name === "waypoint_debug");
   assert("workspacePath" in (tool?.inputSchema?.properties ?? {}), "workspacePath param exists");
-  assert(tool?.inputSchema?.required?.includes("mode"), "mode is required");
+  assert(!tool?.inputSchema?.required?.includes("mode"), "mode is optional (defaults to troubleshoot)");
   assert("symptom" in (tool?.inputSchema?.properties ?? {}), "symptom param exists");
   const modeEnum: string[] = tool?.inputSchema?.properties?.mode?.enum ?? [];
   assert(modeEnum.includes("troubleshoot"), "mode enum includes troubleshoot");
@@ -37,7 +37,6 @@ section("waypoint_debug — troubleshoot mode, no symptom");
   assert(!res.result.isError, "no error flag");
   assertIncludes(text, "Troubleshoot", "shows troubleshoot heading");
   assertIncludes(text, "debug.md", "mentions artifact");
-  assertIncludes(text, "waypoint_fix", "suggests waypoint_fix as next step");
 }
 
 // ── Test 3: troubleshoot mode, with symptom ───────────────────────────────────
