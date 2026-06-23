@@ -4,6 +4,14 @@ All notable changes to `@waycraft/waypoint-mcp` are documented here.
 
 ---
 
+## [0.3.1] — 2026-06-22
+
+### Fixed
+- **`waypoint_design`** — now detects non-code project types (Markdown skill systems, documentation, prompt libraries) and generates context-appropriate guidance instead of defaulting to web application patterns. Content projects get structure/pattern advice about file organization, frontmatter, cross-linking, and naming conventions — not route handlers, Zod validation, or database repositories.
+- **Source context** — `.md` files are now included in source context reads, so Markdown-only projects get file content in the design artifact instead of an empty source block.
+
+---
+
 ## [0.3.0] — 2026-06-21
 
 ### Added

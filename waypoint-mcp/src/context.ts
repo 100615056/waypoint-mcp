@@ -90,9 +90,9 @@ export interface SourceContext {
   truncated: boolean;              // true if we hit the line cap
 }
 
-const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".rb", ".java", ".cs"]);
+const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".rb", ".java", ".cs", ".md"]);
 const SKIP_PATTERNS = ["test", "spec", ".test.", ".spec.", "__test__", "__mock__", "mock", "fixture", "generated", "vendor", ".d.ts"];
-const ENTRY_NAMES = new Set(["index", "main", "app", "server", "cli"]);
+const ENTRY_NAMES = new Set(["index", "main", "app", "server", "cli", "readme"]);
 const HIGH_PRIORITY_DIRS = new Set(["src", "app", "lib", "routes", "controllers", "handlers", "tools", "api", "services", "core"]);
 const MAX_SOURCE_FILES = 12;
 const MAX_LINES_PER_FILE = 250;
