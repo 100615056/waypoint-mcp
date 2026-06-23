@@ -27,6 +27,43 @@ export const definition = {
   },
 };
 
+// ─── Project type detection ──────────────────────────────────────────────────
+
+type ProjectType = "application" | "content";
+
+const CONTENT_PROJECT_SIGNALS = [
+  "skill", "prompt", "template", "guideline", "playbook", "runbook",
+  "documentation", "knowledge base", "markdown", "claude code",
+  "mcp skill", ".md file", "prompt library", "instruction",
+];
+
+const CODE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".rb", ".java", ".cs", ".swift", ".kt"]);
+
+function detectProjectType(
+  ctx: { fileTree?: string; packageJson?: string | null },
+  planArtifact: string | null,
+  goalArtifact: string | null,
+): ProjectType {
+  const fileTree = ctx.fileTree ?? "";
+  const allText = [fileTree, planArtifact ?? "", goalArtifact ?? ""].join("\n").toLowerCase();
+
+  const files = fileTree.split("\n").filter(f => f.trim() && !f.trim().endsWith("/"));
+  const codeFiles = files.filter(f => {
+    const ext = f.trim().match(/\.[^.]+$/)?.[0] ?? "";
+    return CODE_EXTENSIONS.has(ext);
+  });
+  const mdFiles = files.filter(f => f.trim().endsWith(".md"));
+
+  const contentSignals = CONTENT_PROJECT_SIGNALS.filter(s => allText.includes(s)).length;
+  const hasPackageJson = !!ctx.packageJson;
+
+  if (contentSignals >= 2 && codeFiles.length === 0) return "content";
+  if (!hasPackageJson && codeFiles.length === 0 && mdFiles.length > 0) return "content";
+  if (contentSignals >= 3 && codeFiles.length <= mdFiles.length) return "content";
+
+  return "application";
+}
+
 // ─── Tier inference ───────────────────────────────────────────────────────────
 
 function inferTier(
@@ -163,6 +200,137 @@ const PATTERNS = {
       "Async agent pipelines — long-running agent tasks should be queued, not blocking",
     ],
   },
+};
+
+// ─── Content project patterns ────────────────────────────────────────────────
+
+const CONTENT_PATTERNS = {
+  prototype: {
+    label: "Content — Prototype",
+    description: "Exploratory content project — get ideas down, iterate on structure later.",
+    structure: [
+      "Flat folder — one directory per major topic or skill area",
+      "Single entry file (README.md or index.md) linking to everything else",
+      "Keep naming descriptive — file names should tell you what's inside without opening",
+    ],
+    apply: [
+      "Write for the consumer (human or AI) — clear headings, scannable structure",
+      "Use consistent frontmatter or header conventions across files",
+      "One concept per file — split when a file covers two distinct topics",
+      "Use relative links between files so the system works from any root",
+    ],
+    avoid: [
+      "Deeply nested folder hierarchies — flat is easier to navigate and maintain",
+      "Duplicating content across files — link instead of copy",
+      "Mixing instructions with reference material in the same file",
+      "Over-engineering metadata schemas before the content exists",
+    ],
+    aiNative: [
+      "Write instructions in second person imperative — models follow directives better than descriptions",
+      "Keep each file under the context window limit of the consuming model",
+      "Include examples alongside rules — models generalize from examples better than abstract rules",
+    ],
+  },
+  product: {
+    label: "Content — Product",
+    description: "Shared content system with real consumers — consistency, discoverability, maintainability.",
+    structure: [
+      "Topic-based folders with a clear naming convention",
+      "Index file per folder summarizing contents and linking to each file",
+      "Separate templates from filled-in content — templates in their own folder",
+      "Shared definitions or glossary in a single canonical location",
+      "Version or changelog tracking for content that evolves",
+    ],
+    apply: [
+      "Consistent structure within each file — same sections in the same order",
+      "Frontmatter with required fields (title, description, category, last-updated)",
+      "Cross-references between related files using relative links",
+      "Review checklist before publishing — completeness, accuracy, tone consistency",
+      "Single source of truth — every fact lives in exactly one file, others link to it",
+    ],
+    avoid: [
+      "Orphan files — every file must be reachable from the index",
+      "Ambiguous file names — use descriptive slugs, not generic names like 'notes.md'",
+      "Stale content without update dates — readers can't tell what's current",
+      "Inconsistent terminology — pick one term per concept and use it everywhere",
+      "Mixing audience levels in one file — separate beginner from advanced",
+    ],
+    aiNative: [
+      "Structure prompts and instructions with explicit sections — models parse structured text more reliably",
+      "Separate system instructions from examples from reference material",
+      "Tag content by intended consumer (human reader vs. AI model) when both exist",
+      "Test instructions by running them — verify the model produces expected output",
+      "Include negative examples (what NOT to do) alongside positive ones",
+    ],
+  },
+  platform: {
+    label: "Content — Platform",
+    description: "Multi-team content system at scale — governance, modularity, automated validation.",
+    structure: [
+      "Domain-based folder structure — each team or domain owns a subtree",
+      "Schema-validated frontmatter enforced by CI or linting",
+      "Separate source content from generated/derived content",
+      "Registry or manifest file listing all content assets and their metadata",
+      "Versioned content with explicit deprecation lifecycle",
+    ],
+    apply: [
+      "Content contracts — define required sections, metadata, and structure per content type",
+      "Automated validation — lint for broken links, missing frontmatter, structural compliance",
+      "Modular composition — build complex documents by assembling smaller, tested components",
+      "Ownership metadata — every file has a clear owner for review and updates",
+      "Change review process — content changes go through PR review like code",
+    ],
+    avoid: [
+      "Monolithic documents that multiple teams need to edit simultaneously",
+      "Unversioned breaking changes to content that other systems consume",
+      "Manual processes for validation that can be automated",
+      "Content silos — teams duplicating rather than sharing and linking",
+      "Implicit conventions — document all content standards explicitly",
+    ],
+    aiNative: [
+      "Prompt versioning — treat prompts as versioned artifacts with changelogs",
+      "Test suite for AI-consumed content — golden input/output pairs that validate instructions still work",
+      "Modular prompt composition — small, testable prompt components assembled at runtime",
+      "Regression tracking — detect when model behavior changes for the same instruction",
+      "Clear separation between system instructions, few-shot examples, and dynamic context",
+    ],
+  },
+};
+
+const CONTENT_CONCERN_KEYWORDS: Record<string, string[]> = {
+  skills:      ["skill", "slash command", "claude code", "mcp", "tool", "agent skill"],
+  prompts:     ["prompt", "system prompt", "instruction", "directive", "template"],
+  docs:        ["documentation", "docs", "guide", "tutorial", "reference", "manual", "handbook"],
+  knowledge:   ["knowledge base", "wiki", "glossary", "faq", "playbook", "runbook"],
+  workflow:    ["workflow", "process", "pipeline", "checklist", "sop", "procedure"],
+};
+
+const CONTENT_CONCERN_NOTES: Record<string, string[]> = {
+  skills: [
+    "Each skill should be self-contained — a single file with clear trigger conditions and instructions",
+    "Include example invocations alongside the skill definition",
+    "Separate skill logic (what to do) from skill metadata (when to trigger, description)",
+  ],
+  prompts: [
+    "Structure prompts with labeled sections — models parse them more reliably than prose",
+    "Separate reusable prompt fragments from context-specific ones",
+    "Include input/output examples that demonstrate expected behavior",
+  ],
+  docs: [
+    "Organize by user task, not by system structure — 'How to deploy' not 'Deployment module'",
+    "Every guide needs a clear audience statement and prerequisites section",
+    "Keep reference material separate from tutorials — different reading patterns",
+  ],
+  knowledge: [
+    "Single source of truth per concept — cross-link rather than duplicate",
+    "Date-stamp entries that describe current state — they become stale",
+    "Include context for why, not just what — decisions without reasoning are hard to update",
+  ],
+  workflow: [
+    "Number steps explicitly — don't rely on prose to convey sequence",
+    "Mark decision points clearly — where does the reader choose a path?",
+    "Include rollback or error recovery steps, not just the happy path",
+  ],
 };
 
 // ─── Bullet-to-concern mapping ───────────────────────────────────────────────
@@ -302,6 +470,8 @@ export async function run(args: {
 
   const goalLine = goalArtifact?.match(/^# Goal\n+(.+)/m)?.[1] ?? "(goal not parsed)";
 
+  const projectType = detectProjectType(ctx, planArtifact, goalArtifact);
+
   let tierKey: "prototype" | "product" | "platform";
   let confidence: string;
   let tierNote: string;
@@ -309,7 +479,7 @@ export async function run(args: {
   if (explicitTier) {
     tierKey = explicitTier;
     confidence = "explicit";
-    tierNote = `> **Tier set explicitly: ${PATTERNS[tierKey].label}**`;
+    tierNote = `> **Tier set explicitly: ${(projectType === "content" ? CONTENT_PATTERNS : PATTERNS)[tierKey].label}**`;
   } else {
     const inferred = inferTier(ctx, planArtifact);
     tierKey = inferred.tier;
@@ -317,7 +487,7 @@ export async function run(args: {
     tierNote = confirmationPrompt(tierKey, inferred.confidence);
   }
 
-  const patterns = PATTERNS[tierKey];
+  const patterns = projectType === "content" ? CONTENT_PATTERNS[tierKey] : PATTERNS[tierKey];
   const focusNote = focus ? `\n**Focus:** ${focus}` : "";
 
   const hasOptions = !!optionsArtifact;
@@ -331,18 +501,32 @@ export async function run(args: {
   })();
   const deps: string[] = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
   const allSourceContent = Object.values(sourceCtx.files).join("\n");
-  const concerns = detectConcerns(planArtifact ?? goalLine, deps, allSourceContent);
 
+  let concerns: string[];
+  if (projectType === "content") {
+    const lower = [planArtifact ?? "", goalArtifact ?? "", ctx.fileTree ?? ""].join(" ").toLowerCase();
+    concerns = Object.entries(CONTENT_CONCERN_KEYWORDS)
+      .filter(([, keywords]) => keywords.some(kw => lower.includes(kw)))
+      .map(([concern]) => concern);
+  } else {
+    concerns = detectConcerns(planArtifact ?? goalLine, deps, allSourceContent);
+  }
+
+  const concernNotes = projectType === "content" ? CONTENT_CONCERN_NOTES : CONCERN_NOTES;
   const concernSection = concerns.length > 0
     ? [
         "## Plan-specific design notes",
         "<!-- Targeted guidance based on what this plan is actually building -->",
         "",
-        ...concerns.flatMap(concern => [
-          `### ${concern.charAt(0).toUpperCase() + concern.slice(1)}`,
-          ...CONCERN_NOTES[concern].map(n => `- ${n}`),
-          "",
-        ]),
+        ...concerns.flatMap(concern => {
+          const notes = concernNotes[concern];
+          if (!notes) return [];
+          return [
+            `### ${concern.charAt(0).toUpperCase() + concern.slice(1)}`,
+            ...notes.map(n => `- ${n}`),
+            "",
+          ];
+        }),
       ]
     : [];
 
@@ -362,26 +546,44 @@ export async function run(args: {
     : [];
 
   const currentStateSection = Object.keys(sourceCtx.files).length > 0
-    ? [
-        "## Current state observed",
-        `> **Instructions for Claude:** Review the source files above. Fill in what patterns are actually present in this codebase right now — before applying any recommendations. Be specific: name the files and patterns you see.`,
-        "",
-        "**Entry points identified:** _[list entry files and what they do]_",
-        "**File structure pattern:** _[flat / feature-based / layered / other — describe what you see]_",
-        "**Dependency injection:** _[present / absent — where are dependencies constructed?]_",
-        "**Error handling approach:** _[try/catch / .catch() / none — describe what you see]_",
-        "**Config/env access:** _[centralised config module / scattered process.env / other]_",
-        concerns.includes("ai") ? "**LLM call pattern:** _[where are LLM calls made, how are they wrapped?]_" : "",
-        concerns.includes("auth") ? "**Auth approach:** _[middleware / inline / other — describe what you see]_" : "",
-        concerns.includes("database") ? "**Data access pattern:** _[service layer / direct in handlers / repository / other]_" : "",
-        "",
-        "**Patterns already applied that align with this tier:**",
-        "- _[list what's already correct — don't recommend changes to things that are already right]_",
-        "",
-        "**Gaps between current state and this tier's recommendations:**",
-        "- _[list specific deviations — reference actual files where possible]_",
-        "",
-      ].filter(Boolean)
+    ? projectType === "content"
+      ? [
+          "## Current state observed",
+          `> **Instructions for Claude:** Review the files above. Fill in what organizational patterns are present now — before applying recommendations.`,
+          "",
+          "**Entry point / index:** _[is there a main index or README linking to content?]_",
+          "**Folder structure:** _[flat / topic-based / nested — describe what you see]_",
+          "**File naming convention:** _[describe the pattern, or note inconsistencies]_",
+          "**Frontmatter / metadata:** _[present / absent / inconsistent — describe what you see]_",
+          "**Cross-linking:** _[do files reference each other? how?]_",
+          "",
+          "**Patterns already applied that align with this tier:**",
+          "- _[list what's already correct]_",
+          "",
+          "**Gaps between current state and this tier's recommendations:**",
+          "- _[list specific deviations — reference actual files where possible]_",
+          "",
+        ]
+      : [
+          "## Current state observed",
+          `> **Instructions for Claude:** Review the source files above. Fill in what patterns are actually present in this codebase right now — before applying any recommendations. Be specific: name the files and patterns you see.`,
+          "",
+          "**Entry points identified:** _[list entry files and what they do]_",
+          "**File structure pattern:** _[flat / feature-based / layered / other — describe what you see]_",
+          "**Dependency injection:** _[present / absent — where are dependencies constructed?]_",
+          "**Error handling approach:** _[try/catch / .catch() / none — describe what you see]_",
+          "**Config/env access:** _[centralised config module / scattered process.env / other]_",
+          concerns.includes("ai") ? "**LLM call pattern:** _[where are LLM calls made, how are they wrapped?]_" : "",
+          concerns.includes("auth") ? "**Auth approach:** _[middleware / inline / other — describe what you see]_" : "",
+          concerns.includes("database") ? "**Data access pattern:** _[service layer / direct in handlers / repository / other]_" : "",
+          "",
+          "**Patterns already applied that align with this tier:**",
+          "- _[list what's already correct — don't recommend changes to things that are already right]_",
+          "",
+          "**Gaps between current state and this tier's recommendations:**",
+          "- _[list specific deviations — reference actual files where possible]_",
+          "",
+        ].filter(Boolean)
     : [];
 
   const artifact = [
@@ -416,7 +618,7 @@ export async function run(args: {
         ? ["## Anti-patterns to avoid", ...avoid.map(a => `- ❌ ${a}`), ""]
         : [];
     })(),
-    ...(concerns.includes("ai")
+    ...(projectType === "content" || concerns.includes("ai")
       ? ["## AI-native considerations", ...patterns.aiNative.map(n => `- ${n}`), ""]
       : []),
     "## Design decisions",
@@ -463,7 +665,7 @@ export async function run(args: {
       const v = filterBullets(patterns.avoid, concerns).length;
       return v > 0 ? [`- **Anti-patterns to avoid** — ${v} rules`] : [];
     })(),
-    ...(concerns.includes("ai") ? [`- **AI-native** — ${patterns.aiNative.length} considerations`] : []),
+    ...(projectType === "content" || concerns.includes("ai") ? [`- **AI-native** — ${patterns.aiNative.length} considerations`] : []),
     "",
     "### Artifact saved",
     "`design.md` written to `.waypoint/design.md`.",
