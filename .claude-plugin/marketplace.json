@@ -1,0 +1,14 @@
+{
+  "name": "waycraft",
+  "description": "Claude Code plugins by Waycraft.",
+  "owner": {
+    "name": "Angelica Cusipag"
+  },
+  "plugins": [
+    {
+      "name": "waypoint",
+      "source": "./plugin",
+      "description": "Think it through before you build: goal, research and plan stages with a hook that blocks code edits until the plan is filled in."
+    }
+  ]
+}

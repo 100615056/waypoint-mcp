@@ -1,0 +1,9 @@
+{
+  "name": "waypoint",
+  "version": "1.0.0",
+  "description": "Think it through before you build: goal, research and plan stages written to .waypoint/, with a hook that blocks code edits until the plan is actually filled in.",
+  "author": { "name": "Angelica Cusipag" },
+  "repository": "https://github.com/100615056/waypoint-mcp",
+  "license": "MIT",
+  "keywords": ["planning", "process", "workflow", "hooks"]
+}

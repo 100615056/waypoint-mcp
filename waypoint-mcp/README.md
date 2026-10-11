@@ -1,5 +1,7 @@
 # Waypoint
 
+> **This MCP server is no longer maintained.** Waypoint is now a Claude Code plugin: a single skill plus a hook that blocks code edits until the plan is really filled in. See [`plugin/`](../plugin/README.md) to install it.
+
 Building with AI is fast. But fast without direction means rework, missed requirements, and products that don't land. Waypoint gives you the questions a senior engineer would ask — at every step, automatically.
 
 14 guided tools take you from first idea to shipped product. Each one reads your workspace, asks the right questions, and writes a plain-language record of what was decided and why. For engineers and non-technical teams alike.
